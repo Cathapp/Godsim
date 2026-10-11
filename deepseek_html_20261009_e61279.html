@@ -1,0 +1,3029 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🕹 Городок — GTA-режим</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 12px; padding-bottom: 40px; background: #0f0f1e; color: #c8d6e5;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; }
+  h1 { text-align: center; color: #f0d97a; font-size: 20px; margin: 6px 0 4px; }
+  .subtitle { text-align: center; color: #6b7890; font-size: 11px; margin-bottom: 14px; }
+  .card { background: #1a1a30; border: 1px solid #f0d97a33; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .card h2 { color: #f0d97a; font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 6px; }
+  button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: bold; background: #f0d97a; color: #0f0f1e; cursor: pointer; }
+  button:active { transform: scale(0.98); }
+  button.danger { background: #8b0000; color: #fff; }
+  button.ok { background: #4caf50; color: #fff; }
+  button.blue { background: #2196f3; color: #fff; }
+  button.ghost { background: #2a2a48; color: #c8d6e5; }
+  .hidden { display: none !important; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #f0d97a;
+    color: #0f0f1e; padding: 10px 18px; border-radius: 20px; font-weight: bold; font-size: 13px;
+    box-shadow: 0 4px 20px #f0d97a66; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    z-index: 1000; max-width: 90%; text-align: center; }
+  .toast.show { opacity: 1; }
+  
+  /* ========== ЭКРАН ИГРЫ ========== */
+  #gameContainer { width: 100%; height: 85vh; min-height: 500px; background: #87ceeb;
+    position: relative; overflow: hidden; border-radius: 12px; }
+  #gameCanvas { display: block; width: 100%; height: 100%; }
+  
+  /* HUD (интерфейс поверх игры) */
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+  
+  /* Верхний левый угол — инфо */
+  #hudInfo { position: absolute; top: 12px; left: 12px;
+    background: rgba(10,10,24,0.85); padding: 10px 14px; border-radius: 10px;
+    font-family: monospace; font-size: 12px; color: #f0d97a;
+    border: 1px solid #f0d97a55; pointer-events: auto; min-width: 180px; }
+  #hudInfo .row { display: flex; justify-content: space-between; gap: 10px; margin: 2px 0; }
+  #hudInfo .label { color: #8fa8c8; }
+  #hudInfo .value { color: #fff; }
+  
+  /* Верхний правый — кнопки переключения */
+  #hudTopRight { position: absolute; top: 12px; right: 12px;
+    display: flex; gap: 6px; pointer-events: auto; }
+  .hud-btn { background: rgba(42,42,72,0.9); color: #c8d6e5;
+    border: 1px solid #f0d97a44; padding: 8px 12px; border-radius: 8px;
+    font-size: 14px; cursor: pointer; font-weight: bold; }
+  .hud-btn:active { transform: scale(0.95); }
+  .hud-btn.active { background: #f0d97a; color: #0f0f1e; }
+  
+  /* Джойстик слева */
+  #joystickZone { position: absolute; bottom: 20px; left: 20px;
+    width: 130px; height: 130px; border-radius: 50%;
+    background: rgba(10,10,24,0.35); border: 2px solid #f0d97a55;
+    touch-action: none; pointer-events: auto; }
+  #joystickKnob { position: absolute; top: 50%; left: 50%;
+    width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%;
+    background: #f0d97a; opacity: 0.85; transition: opacity 0.15s; }
+  #joystickZone.active #joystickKnob { opacity: 1; background: #ffe89a; }
+  
+  /* Кнопки справа */
+  #actionButtons { position: absolute; bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+  .action-btn { width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(42,42,72,0.9); color: #f0d97a;
+    border: 2px solid #f0d97a66; font-size: 22px; font-weight: bold;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    user-select: none; }
+  .action-btn:active { transform: scale(0.9); background: #f0d97a; color: #0f0f1e; }
+  .action-btn.small { width: 55px; height: 55px; font-size: 16px; }
+  
+  /* Мини-карта */
+  #minimap { position: absolute; top: 12px; right: 12px;
+    width: 140px; height: 140px; border-radius: 8px;
+    border: 2px solid #f0d97a55; background: rgba(10,10,24,0.85); }
+  
+  /* Подсказка рядом с центром */
+  #hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(10,10,24,0.9); color: #f0d97a;
+    padding: 10px 20px; border-radius: 20px; font-family: monospace; font-size: 13px;
+    border: 1px solid #f0d97a55; opacity: 0; transition: opacity 0.3s; }
+  #hint.show { opacity: 1; }
+  
+  /* Прицел при стрельбе */
+  #crosshair { position: absolute; top: 50%; left: 50%;
+    width: 24px; height: 24px; margin: -12px 0 0 -12px;
+    pointer-events: none; display: none; }
+  #crosshair.show { display: block; }
+  #crosshair::before, #crosshair::after { content: ''; position: absolute;
+    background: #f0d97a; box-shadow: 0 0 4px #000; }
+  #crosshair::before { left: 11px; top: 0; width: 2px; height: 24px; }
+  #crosshair::after { top: 11px; left: 0; height: 2px; width: 24px; }
+  
+  /* Загрузка */
+  #loading { position: absolute; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,10,24,0.95); color: #f0d97a; font-family: monospace;
+    flex-direction: column; gap: 12px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid #2a2a48;
+    border-top-color: #f0d97a; border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* Меню паузы */
+  #pauseMenu { position: absolute; inset: 0; z-index: 30;
+    background: rgba(10,10,24,0.95); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; padding: 20px; }
+  #pauseMenu h2 { color: #f0d97a; margin: 0 0 20px 0; }
+  #pauseMenu button { max-width: 300px; }
+  
+  /* Миссии */
+  #missionsPanel { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,10,24,0.85); color: #f0d97a;
+    padding: 8px 16px; border-radius: 10px; font-family: monospace; font-size: 12px;
+    border: 1px solid #f0d97a55; display: none; }
+  #missionsPanel.show { display: block; }
+  
+  /* Инфо о текущей миссии */
+  #currentMission { position: absolute; bottom: 160px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,10,24,0.85); color: #8fa8c8;
+    padding: 8px 16px; border-radius: 10px; font-family: monospace; font-size: 12px;
+    border: 1px solid #f0d97a55; display: none; text-align: center; max-width: 90%; }
+  #currentMission.show { display: block; }
+  #currentMission .title { color: #f0d97a; font-weight: bold; margin-bottom: 3px; }
+  
+  @media (max-width: 500px) {
+    #joystickZone { width: 110px; height: 110px; }
+    #joystickKnob { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
+    .action-btn { width: 60px; height: 60px; font-size: 18px; }
+    .action-btn.small { width: 48px; height: 48px; font-size: 14px; }
+    #minimap { width: 100px; height: 100px; }
+    #hudInfo { font-size: 10px; padding: 8px 10px; min-width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>🕹 ГОРОДОК — GTA-режим</h1>
+<div class="subtitle">Пройди по улицам, покатайся на машинах, поговори с жителями</div>
+
+<!-- ЭКРАН СТАРТА -->
+<div class="card" id="startScreen">
+  <h2>🌆 Добро пожаловать в Городок</h2>
+  <p style="color:#a8b4c8; font-size:13px; line-height:1.6;">
+    🎮 <b>Управление на ПК:</b><br>
+    • WASD — идти<br>
+    • Shift — бежать<br>
+    • Space — прыжок<br>
+    • Мышь — поворот камеры<br>
+    • F — взаимодействие (машины, NPC)<br>
+    • Tab — карта<br>
+    • Esc — пауза<br><br>
+    📱 <b>На телефоне:</b><br>
+    • Левый джойстик — движение<br>
+    • Свайп справа — поворот камеры<br>
+    • Кнопки справа — действия
+  </p>
+  <button class="ok" onclick="startGame()">▶ Начать игру</button>
+</div>
+
+<!-- ЭКРАН ИГРЫ -->
+<div class="card hidden" id="gameScreen" style="padding:0;">
+  <div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- HUD -->
+    <div id="hud">
+      <!-- Инфо сверху слева -->
+      <div id="hudInfo">
+        <div class="row"><span class="label">💰 Деньги:</span><span class="value" id="hudMoney">$100</span></div>
+        <div class="row"><span class="label">❤️ Здоровье:</span><span class="value" id="hudHealth">100</span></div>
+        <div class="row"><span class="label">⭐ Уровень:</span><span class="value" id="hudLevel">1</span></div>
+        <div class="row"><span class="label">📍 Коорд:</span><span class="value" id="hudCoords">0, 0</span></div>
+      </div>
+      
+      <!-- Кнопки сверху справа -->
+      <div id="hudTopRight">
+        <button class="hud-btn" onclick="toggleCameraView()" id="camBtn" title="Камера">🎥</button>
+        <button class="hud-btn" onclick="togglePause()" title="Пауза">⏸</button>
+      </div>
+      
+      <!-- Мини-карта -->
+      <canvas id="minimap" width="140" height="140"></canvas>
+      
+      <!-- Джойстик -->
+      <div id="joystickZone">
+        <div id="joystickKnob"></div>
+      </div>
+      
+      <!-- Кнопки действий -->
+      <div id="actionButtons">
+        <button class="action-btn small" id="btnJump" title="Прыжок">⬆</button>
+        <button class="action-btn" id="btnAction" title="Действие">✋</button>
+        <button class="action-btn small" id="btnRun" title="Бег">🏃</button>
+      </div>
+      
+      <!-- Подсказка -->
+      <div id="hint"></div>
+      
+      <!-- Прицел -->
+      <div id="crosshair"></div>
+      
+      <!-- Миссии -->
+      <div id="missionsPanel">📋 Миссия: <span id="missionProgress">0/0</span></div>
+      
+      <!-- Текущая миссия -->
+      <div id="currentMission">
+        <div class="title" id="missionTitle">Нет миссии</div>
+        <div id="missionDesc">Подойди к маркеру, чтобы начать</div>
+      </div>
+    </div>
+    
+    <!-- Загрузка -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="loadingText">Создание города…</div>
+    </div>
+    
+    <!-- Меню паузы -->
+    <div id="pauseMenu" class="hidden">
+      <h2>⏸ Пауза</h2>
+      <button class="ok" onclick="togglePause()">▶ Продолжить</button>
+      <button class="ghost" onclick="toggleCameraView()">🎥 Сменить камеру</button>
+      <button class="ghost" onclick="resetPlayer()">📍 Вернуться в центр</button>
+      <button class="danger" onclick="exitToMenu()">🚪 Выйти в меню</button>
+    </div>
+  </div>
+</div>
+
+<!-- Хроники -->
+<div class="card">
+  <h2>📜 Лог событий</h2>
+  <div id="log" style="background:#0a0a18; border-radius:8px; padding:10px; font-family:monospace;
+       font-size:12px; height:120px; overflow-y:auto; line-height:1.5;"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+// ============================================================
+// ============ ГОРОДОК — GTA-режим (часть 2) ================
+// ============================================================
+
+// ============ СОСТОЯНИЕ ИГРЫ ============
+const game = {
+  active: false,
+  scene: null, camera: null, renderer: null,
+  clock: null,
+  player: null, playerParts: null,
+  cameraMode: 'third',       // 'third' | 'top'
+  cameraYaw: 0, cameraPitch: 0.35, cameraDist: 6,
+  keys: {},
+  joystick: { active: false, dx: 0, dy: 0, baseX: 0, baseY: 0 },
+  running: false,
+  velocityY: 0, onGround: true, jumpPressed: false,
+  runPressed: false,
+  worldSize: 220,
+  buildings: [],
+  npcs: [],
+  cars: [],
+  missions: [],
+  currentMission: null,
+  money: 100,
+  health: 100,
+  level: 1,
+  // Данные для миникарты
+  mapData: []
+};
+
+// ============ УТИЛИТЫ ============
+function $(id){ return document.getElementById(id); }
+
+function toast(msg, ms = 2500){
+  const t = $('toast'); if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function gtaLog(msg){
+  const el = $('log'); if (!el) return;
+  const d = document.createElement('div');
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 200) el.removeChild(el.firstChild);
+}
+
+function showHint(text, duration = 2000){
+  const h = $('hint'); if (!h) return;
+  h.textContent = text;
+  h.classList.add('show');
+  clearTimeout(h._t);
+  if (duration > 0) h._t = setTimeout(() => h.classList.remove('show'), duration);
+}
+
+function hideHint(){
+  const h = $('hint'); if (h) h.classList.remove('show');
+}
+
+function updateHUD(){
+  if ($('hudMoney')) $('hudMoney').textContent = '$' + game.money;
+  if ($('hudHealth')) $('hudHealth').textContent = game.health;
+  if ($('hudLevel')) $('hudLevel').textContent = game.level;
+  if ($('hudCoords') && game.player){
+    const p = game.player.position;
+    $('hudCoords').textContent = `${p.x.toFixed(0)}, ${p.z.toFixed(0)}`;
+  }
+}
+
+// ============ СТАРТ / СТОП ============
+function startGame(){
+  $('startScreen').classList.add('hidden');
+  $('gameScreen').classList.remove('hidden');
+  game.active = true;
+
+  if (!game.scene){
+    initGame();
+  } else {
+    $('loading').style.display = 'none';
+    resizeRenderer();
+  }
+
+  if (!game.running){
+    game.running = true;
+    game.clock = new THREE.Clock();
+    requestAnimationFrame(gameLoop);
+  }
+
+  gtaLog('🌆 Добро пожаловать в Городок!');
+  toast('🎮 Игра началась');
+}
+
+function togglePause(){
+  const menu = $('pauseMenu');
+  if (!menu) return;
+  if (menu.classList.contains('hidden')){
+    menu.classList.remove('hidden');
+    game.running = false;
+  } else {
+    menu.classList.add('hidden');
+    game.running = true;
+    if (game.clock) game.clock.getDelta();  // сбрасываем время
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function exitToMenu(){
+  $('pauseMenu').classList.add('hidden');
+  $('gameScreen').classList.add('hidden');
+  $('startScreen').classList.remove('hidden');
+  game.active = false;
+  game.running = false;
+}
+
+function toggleCameraView(){
+  game.cameraMode = game.cameraMode === 'third' ? 'top' : 'third';
+  const btn = $('camBtn');
+  if (btn) btn.textContent = game.cameraMode === 'third' ? '🎥' : '🗺';
+  toast(game.cameraMode === 'third' ? '🎥 Вид от третьего лица' : '🗺 Вид сверху');
+  if ($('pauseMenu') && !$('pauseMenu').classList.contains('hidden')) togglePause();
+}
+
+function resetPlayer(){
+  if (game.player) game.player.position.set(0, 0, 0);
+  toast('📍 Ты в центре города');
+  if ($('pauseMenu') && !$('pauseMenu').classList.contains('hidden')) togglePause();
+}
+
+// ============ ИНИЦИАЛИЗАЦИЯ ============
+function initGame(){
+  const container = $('gameContainer');
+  if (!container) return;
+
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  // Сцена
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+  scene.fog = new THREE.Fog(0x87ceeb, 80, 200);
+
+  // Камера
+  const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
+
+  // Рендерер
+  const renderer = new THREE.WebGLRenderer({
+    canvas: $('gameCanvas'),
+    antialias: true
+  });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  // Свет
+  const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.0);
+  sun.position.set(40, 80, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 1024;
+  sun.shadow.mapSize.height = 1024;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 250;
+  sun.shadow.camera.left = -100;
+  sun.shadow.camera.right = 100;
+  sun.shadow.camera.top = 100;
+  sun.shadow.camera.bottom = -100;
+  scene.add(sun);
+
+  // Земля
+  const groundGeo = new THREE.PlaneGeometry(game.worldSize, game.worldSize);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a7a4a });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  game.scene = scene;
+  game.camera = camera;
+  game.renderer = renderer;
+
+  // Строим мир
+  buildCity(scene);
+  createPlayer(scene);
+  setupControls();
+  setupJoystick();
+
+  // Первый апдейт камеры
+  updateCamera(0);
+
+  $('loading').style.display = 'none';
+  resizeRenderer();
+
+  window.addEventListener('resize', resizeRenderer);
+}
+
+function resizeRenderer(){
+  const container = $('gameContainer');
+  if (!container || !game.renderer) return;
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  game.renderer.setSize(W, H);
+  game.camera.aspect = W / H;
+  game.camera.updateProjectionMatrix();
+}
+
+// ============ ГОРОД ============
+function buildCity(scene){
+  const gridSize = 6;
+  const blockSize = 22;
+  const roadWidth = 8;
+  const step = blockSize + roadWidth;
+  const offset = -((gridSize - 1) * step) / 2;
+
+  // Материал дорог
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xdddd33 });
+
+  // Дороги
+  for (let i = 0; i < gridSize + 1; i++){
+    // Вдоль Z (вертикальные)
+    const roadH = new THREE.Mesh(
+      new THREE.PlaneGeometry(roadWidth, game.worldSize),
+      roadMat
+    );
+    roadH.rotation.x = -Math.PI / 2;
+    roadH.position.set(offset + i * step - step / 2, 0.01, 0);
+    roadH.receiveShadow = true;
+    scene.add(roadH);
+
+    // Разметка
+    const lineH = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.4, game.worldSize),
+      lineMat
+    );
+    lineH.rotation.x = -Math.PI / 2;
+    lineH.position.set(offset + i * step - step / 2, 0.02, 0);
+    scene.add(lineH);
+
+    // Вдоль X (горизонтальные)
+    const roadV = new THREE.Mesh(
+      new THREE.PlaneGeometry(game.worldSize, roadWidth),
+      roadMat
+    );
+    roadV.rotation.x = -Math.PI / 2;
+    roadV.position.set(0, 0.01, offset + i * step - step / 2);
+    roadV.receiveShadow = true;
+    scene.add(roadV);
+
+    const lineV = new THREE.Mesh(
+      new THREE.PlaneGeometry(game.worldSize, 0.4),
+      lineMat
+    );
+    lineV.rotation.x = -Math.PI / 2;
+    lineV.position.set(0, 0.02, offset + i * step - step / 2);
+    scene.add(lineV);
+  }
+
+  // Дома
+  const palette = [0xcc9966, 0xaaaaaa, 0x8899aa, 0xbb8866, 0x776644, 0x998888, 0x996655];
+  const roofMat = new THREE.MeshLambertMaterial({ color: 0x552222 });
+  const windowMat = new THREE.MeshBasicMaterial({ color: 0x111122 });
+
+  for (let ix = 0; ix < gridSize; ix++){
+    for (let iz = 0; iz < gridSize; iz++){
+      const cx = offset + ix * step;
+      const cz = offset + iz * step;
+
+      // Иногда парк
+      if (Math.random() < 0.12){
+        createTree(scene, cx, cz);
+        continue;
+      }
+
+      const w = 6 + Math.random() * 6;
+      const d = 6 + Math.random() * 6;
+      const h = 6 + Math.random() * 16;
+      const color = palette[Math.floor(Math.random() * palette.length)];
+
+      // Здание
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshLambertMaterial({ color });
+      const building = new THREE.Mesh(geo, mat);
+      building.castShadow = true;
+      building.receiveShadow = true;
+      building.position.set(cx, h / 2, cz);
+      scene.add(building);
+
+      // Крыша
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.4, 0.4, d + 0.4),
+        roofMat
+      );
+      roof.position.set(cx, h + 0.2, cz);
+      roof.castShadow = true;
+      scene.add(roof);
+
+      // Окна
+      const rows = Math.floor(h / 2.5);
+      const cols = Math.floor(w / 1.8);
+      for (let r = 1; r < rows; r++){
+        for (let c = 0; c < cols; c++){
+          const wx = -w/2 + 1 + c * 1.8;
+          const win = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.2), windowMat);
+          win.position.set(cx + wx, r * 2.5 - 0.5, cz + d/2 + 0.01);
+          scene.add(win);
+        }
+      }
+
+      game.buildings.push({ x: cx, z: cz, w, d, h });
+    }
+  }
+}
+
+function createTree(scene, x, z){
+  // Ствол
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.25, 0.3, 1.6, 6),
+    new THREE.MeshLambertMaterial({ color: 0x5a3a1a })
+  );
+  trunk.position.set(x, 0.8, z);
+  trunk.castShadow = true;
+  scene.add(trunk);
+
+  // Листва (2 сферы для густоты)
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2a8a3a });
+  const leaf1 = new THREE.Mesh(new THREE.SphereGeometry(1.4, 8, 8), leafMat);
+  leaf1.position.set(x, 2.4, z);
+  leaf1.castShadow = true;
+  scene.add(leaf1);
+  const leaf2 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 8, 8), leafMat);
+  leaf2.position.set(x + 0.5, 2.9, z + 0.3);
+  leaf2.castShadow = true;
+  scene.add(leaf2);
+}
+
+// ============ ПЕРСОНАЖ (детальный) ============
+function createHumanoid(opts = {}){
+  const {
+    skinColor = 0xf0c090,
+    jacketColor = 0x2266cc,
+    pantsColor = 0x223344,
+    shoeColor = 0x111111,
+    hairColor = 0x2a1a0a
+  } = opts;
+
+  const group = new THREE.Group();
+
+  // === ГОЛОВА ===
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 16, 16),
+    new THREE.MeshLambertMaterial({ color: skinColor })
+  );
+  head.position.y = 1.72;
+  head.castShadow = true;
+  group.add(head);
+
+  // Волосы (полусфера сверху)
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.235, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    new THREE.MeshLambertMaterial({ color: hairColor })
+  );
+  hair.position.y = 1.72;
+  hair.castShadow = true;
+  group.add(hair);
+
+  // Глаза (2 маленьких белых шара + чёрные зрачки)
+  const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const eyePupilMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeWhiteMat);
+  eyeL.position.set(-0.08, 1.74, 0.20);
+  group.add(eyeL);
+  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 6), eyePupilMat);
+  pupilL.position.set(-0.08, 1.74, 0.235);
+  group.add(pupilL);
+
+  const eyeR = eyeL.clone();
+  eyeR.position.set(0.08, 1.74, 0.20);
+  group.add(eyeR);
+  const pupilR = pupilL.clone();
+  pupilR.position.set(0.08, 1.74, 0.235);
+  group.add(pupilR);
+
+  // Нос (маленький)
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.04, 0.08, 6),
+    new THREE.MeshLambertMaterial({ color: skinColor })
+  );
+  nose.position.set(0, 1.68, 0.22);
+  nose.rotation.x = Math.PI / 2;
+  group.add(nose);
+
+  // === ШЕЯ ===
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.09, 0.1, 8),
+    new THREE.MeshLambertMaterial({ color: skinColor })
+  );
+  neck.position.y = 1.52;
+  group.add(neck);
+
+  // === ТОРС (куртка) ===
+  const torso = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.65, 0.3),
+    new THREE.MeshLambertMaterial({ color: jacketColor })
+  );
+  torso.position.y = 1.13;
+  torso.castShadow = true;
+  group.add(torso);
+
+  // Воротник
+  const collar = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.08, 0.32),
+    new THREE.MeshLambertMaterial({ color: 0x0a1a2a })
+  );
+  collar.position.y = 1.42;
+  group.add(collar);
+
+  // Молния (полоска спереди)
+  const zipper = new THREE.Mesh(
+    new THREE.BoxGeometry(0.03, 0.6, 0.02),
+    new THREE.MeshBasicMaterial({ color: 0xdddddd })
+  );
+  zipper.position.set(0, 1.13, 0.16);
+  group.add(zipper);
+
+  // === РУКИ (2 сегмента: плечо + предплечье) ===
+  const jacketMat = new THREE.MeshLambertMaterial({ color: jacketColor });
+  const skinMat = new THREE.MeshLambertMaterial({ color: skinColor });
+
+  function makeArm(side){
+    const armGroup = new THREE.Group();
+
+    // Плечо
+    const upper = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.08, 0.28, 4, 8),
+      jacketMat
+    );
+    upper.position.y = -0.18;
+    upper.castShadow = true;
+    armGroup.add(upper);
+
+    // Предплечье (дочка плеча — гнётся вместе)
+    const lower = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.07, 0.24, 4, 8),
+      jacketMat
+    );
+    lower.position.y = -0.5;
+    lower.castShadow = true;
+    armGroup.add(lower);
+
+    // Кисть
+    const hand = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 8, 8),
+      skinMat
+    );
+    hand.position.y = -0.7;
+    armGroup.add(hand);
+
+    armGroup.position.set(side * 0.32, 1.38, 0);
+    return armGroup;
+  }
+
+  const armL = makeArm(-1);
+  const armR = makeArm(1);
+  group.add(armL);
+  group.add(armR);
+
+  // === НОГИ (бедро + голень) ===
+  const pantsMat = new THREE.MeshLambertMaterial({ color: pantsColor });
+  const shoeMat = new THREE.MeshLambertMaterial({ color: shoeColor });
+
+  function makeLeg(side){
+    const legGroup = new THREE.Group();
+
+    // Бедро
+    const upper = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.1, 0.3, 4, 8),
+      pantsMat
+    );
+    upper.position.y = -0.22;
+    upper.castShadow = true;
+    legGroup.add(upper);
+
+    // Голень
+    const lower = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.09, 0.3, 4, 8),
+      pantsMat
+    );
+    lower.position.y = -0.62;
+    lower.castShadow = true;
+    legGroup.add(lower);
+
+    // Кроссовок
+    const shoe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.1, 0.32),
+      shoeMat
+    );
+    shoe.position.set(0, -0.85, 0.05);
+    shoe.castShadow = true;
+    legGroup.add(shoe);
+
+    legGroup.position.set(side * 0.13, 0.85, 0);
+    return legGroup;
+  }
+
+  const legL = makeLeg(-1);
+  const legR = makeLeg(1);
+  group.add(legL);
+  group.add(legR);
+
+  return {
+    group,
+    parts: { head, hair, torso, armL, armR, legL, legR, neck }
+  };
+}
+
+function createPlayer(scene){
+  const { group, parts } = createHumanoid({
+    skinColor: 0xf0c090,
+    jacketColor: 0x2266cc,
+    pantsColor: 0x1a1a2a,
+    shoeColor: 0x111111,
+    hairColor: 0x2a1a0a
+  });
+  group.position.set(0, 0, 0);
+  scene.add(group);
+  game.player = group;
+  game.playerParts = parts;
+}
+
+// ============ УПРАВЛЕНИЕ ============
+function setupControls(){
+  // Клавиатура
+  window.addEventListener('keydown', e => {
+    if (!game.active) return;
+    game.keys[e.code] = true;
+    if (e.code === 'Space'){ game.jumpPressed = true; e.preventDefault(); }
+    if (e.code === 'Escape'){ togglePause(); }
+    if (e.code === 'Tab'){ e.preventDefault(); toggleCameraView(); }
+    if (e.code === 'KeyF'){ doAction(); }
+  });
+  window.addEventListener('keyup', e => {
+    game.keys[e.code] = false;
+  });
+
+  // Мышь — поворот камеры (зажать ПКМ или ЛКМ и тащить)
+  let mouseDown = false, lastX = 0, lastY = 0;
+  const canvas = $('gameCanvas');
+  if (!canvas) return;
+
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 0 && !e.target.closest('#joystickZone') && !e.target.closest('button')){
+      mouseDown = true;
+      lastX = e.clientX; lastY = e.clientY;
+    }
+  });
+  window.addEventListener('mousemove', e => {
+    if (!mouseDown) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    game.cameraYaw -= dx * 0.005;
+    game.cameraPitch = Math.max(-0.4, Math.min(1.2, game.cameraPitch + dy * 0.005));
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { mouseDown = false; });
+
+  // Кнопки действий
+  const btnJump = $('btnJump');
+  const btnRun = $('btnRun');
+  const btnAction = $('btnAction');
+
+  if (btnJump) {
+    btnJump.addEventListener('touchstart', e => { e.preventDefault(); game.jumpPressed = true; });
+    btnJump.addEventListener('mousedown', e => { e.preventDefault(); game.jumpPressed = true; });
+  }
+  if (btnRun){
+    const runOn = e => { e.preventDefault(); game.runPressed = true; };
+    const runOff = () => { game.runPressed = false; };
+    btnRun.addEventListener('touchstart', runOn);
+    btnRun.addEventListener('touchend', runOff);
+    btnRun.addEventListener('mousedown', runOn);
+    btnRun.addEventListener('mouseup', runOff);
+  }
+  if (btnAction){
+    btnAction.addEventListener('click', doAction);
+  }
+}
+
+// ============ ДЖОЙСТИК ============
+function setupJoystick(){
+  const zone = $('joystickZone');
+  const knob = $('joystickKnob');
+  if (!zone || !knob) return;
+  const maxDist = 45;
+
+  function start(e){
+    e.preventDefault();
+    game.joystick.active = true;
+    zone.classList.add('active');
+    const rect = zone.getBoundingClientRect();
+    game.joystick.baseX = rect.left + rect.width / 2;
+    game.joystick.baseY = rect.top + rect.height / 2;
+    move(e);
+  }
+  function move(e){
+    if (!game.joystick.active) return;
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    let dx = t.clientX - game.joystick.baseX;
+    let dy = t.clientY - game.joystick.baseY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxDist){ dx = dx / dist * maxDist; dy = dy / dist * maxDist; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    game.joystick.dx = dx / maxDist;
+    game.joystick.dy = dy / maxDist;
+  }
+  function end(e){
+    if (!game.joystick.active) return;
+    game.joystick.active = false;
+    game.joystick.dx = 0; game.joystick.dy = 0;
+    knob.style.transform = 'translate(0,0)';
+    zone.classList.remove('active');
+  }
+
+  zone.addEventListener('touchstart', start, { passive: false });
+  zone.addEventListener('touchmove', move, { passive: false });
+  zone.addEventListener('touchend', end);
+  zone.addEventListener('touchcancel', end);
+  zone.addEventListener('mousedown', start);
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+}
+
+// ============ ВЗАИМОДЕЙСТВИЕ ============
+function doAction(){
+  if (!game.player) return;
+  // Пока просто подсказка. В части 3 — вход в машины, разговор с NPC
+  showHint('✋ Действие (пока ничего рядом)');
+  setTimeout(hideHint, 1500);
+}
+
+// ============ ОБНОВЛЕНИЕ ИГРОКА ============
+function updatePlayer(dt){
+  if (!game.player) return;
+  const parts = game.playerParts;
+
+  const speedBase = 4;
+  const speedRun = 8;
+  const speed = game.runPressed ? speedRun : speedBase;
+
+  // Ввод
+  let moveX = 0, moveZ = 0;
+  if (game.keys['KeyW'] || game.keys['ArrowUp']) moveZ -= 1;
+  if (game.keys['KeyS'] || game.keys['ArrowDown']) moveZ += 1;
+  if (game.keys['KeyA'] || game.keys['ArrowLeft']) moveX -= 1;
+  if (game.keys['KeyD'] || game.keys['ArrowRight']) moveX += 1;
+  if (game.joystick.active){
+    moveX = game.joystick.dx;
+    moveZ = game.joystick.dy;
+  }
+
+  const len = Math.hypot(moveX, moveZ);
+  const moving = len > 0.1;
+
+  if (moving){
+    moveX /= len; moveZ /= len;
+
+    // Движение относительно камеры
+    const cos = Math.cos(game.cameraYaw);
+    const sin = Math.sin(game.cameraYaw);
+    const worldX = moveX * cos - moveZ * sin;
+    const worldZ = moveX * sin + moveZ * cos;
+
+    game.player.position.x += worldX * speed * dt;
+    game.player.position.z += worldZ * speed * dt;
+
+    // Поворот персонажа
+    const targetRot = Math.atan2(worldX, worldZ);
+    let diff = targetRot - game.player.rotation.y;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    game.player.rotation.y += diff * 8 * dt;
+
+    // === АНИМАЦИЯ ХОДЬБЫ ===
+    const walkSpeed = game.runPressed ? 14 : 9;
+    const t = performance.now() / 1000 * walkSpeed;
+    const amp = game.runPressed ? 1.1 : 0.7;
+
+    if (parts){
+      // Руки машут
+      parts.armL.rotation.x = Math.sin(t) * amp;
+      parts.armR.rotation.x = -Math.sin(t) * amp;
+      // Ноги переступают
+      parts.legL.rotation.x = -Math.sin(t) * amp;
+      parts.legR.rotation.x = Math.sin(t) * amp;
+      // Корпус чуть покачивается
+      parts.torso.rotation.z = Math.sin(t) * 0.03;
+      // При беге наклон вперёд
+      if (game.runPressed){
+        parts.torso.rotation.x = -0.15;
+      } else {
+        parts.torso.rotation.x *= 0.9;
+      }
+    }
+  } else {
+    // Покой
+    if (parts){
+      parts.armL.rotation.x *= 0.85;
+      parts.armR.rotation.x *= 0.85;
+      parts.legL.rotation.x *= 0.85;
+      parts.legR.rotation.x *= 0.85;
+      parts.torso.rotation.x *= 0.85;
+      parts.torso.rotation.z *= 0.85;
+    }
+  }
+
+  // Прыжок
+  if (game.jumpPressed && game.onGround){
+    game.velocityY = 8;
+    game.onGround = false;
+    game.jumpPressed = false;
+    // Руки вверх при прыжке
+    if (parts){
+      parts.armL.rotation.x = -2;
+      parts.armR.rotation.x = -2;
+    }
+  }
+  game.jumpPressed = false;
+
+  // Гравитация
+  game.velocityY -= 22 * dt;
+  game.player.position.y += game.velocityY * dt;
+  if (game.player.position.y <= 0){
+    game.player.position.y = 0;
+    game.velocityY = 0;
+    game.onGround = true;
+  }
+
+  // Границы мира
+  const lim = game.worldSize / 2 - 5;
+  game.player.position.x = Math.max(-lim, Math.min(lim, game.player.position.x));
+  game.player.position.z = Math.max(-lim, Math.min(lim, game.player.position.z));
+
+  // Простое «отталкивание» от зданий
+  for (const b of game.buildings){
+    const dx = game.player.position.x - b.x;
+    const dz = game.player.position.z - b.z;
+    const halfW = b.w / 2 + 0.4;
+    const halfD = b.d / 2 + 0.4;
+    if (Math.abs(dx) < halfW && Math.abs(dz) < halfD){
+      // Выталкиваем по меньшей оси
+      const overlapX = halfW - Math.abs(dx);
+      const overlapZ = halfD - Math.abs(dz);
+      if (overlapX < overlapZ){
+        game.player.position.x += (dx > 0 ? overlapX : -overlapX);
+      } else {
+        game.player.position.z += (dz > 0 ? overlapZ : -overlapZ);
+      }
+    }
+  }
+}
+
+// ============ КАМЕРА ============
+function updateCamera(dt){
+  if (!game.player || !game.camera) return;
+  const p = game.player.position;
+
+  if (game.cameraMode === 'third'){
+    // От третьего лица
+    const dist = game.cameraDist;
+    const yaw = game.cameraYaw;
+    const pitch = game.cameraPitch;
+    const camX = p.x + Math.sin(yaw) * Math.cos(pitch) * dist;
+    const camY = p.y + Math.sin(pitch) * dist + 1.5;
+    const camZ = p.z + Math.cos(yaw) * Math.cos(pitch) * dist;
+    game.camera.position.set(camX, camY, camZ);
+    game.camera.lookAt(p.x, p.y + 1.2, p.z);
+  } else {
+    // Сверху (слегка под углом)
+    game.camera.position.set(p.x, p.y + 22, p.z + 8);
+    game.camera.lookAt(p.x, p.y, p.z);
+  }
+}
+
+// ============ МИНИ-КАРТА ============
+function drawMinimap(){
+  const c = $('minimap'); if (!c) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  ctx.fillStyle = '#0a0a18';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!game.player) return;
+
+  const scale = W / game.worldSize;
+  const cx = W / 2, cy = H / 2;
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // Здания
+  ctx.fillStyle = '#3a3a5a';
+  game.buildings.forEach(b => {
+    const dx = (b.x - px) * scale + cx;
+    const dz = (b.z - pz) * scale + cy;
+    const w = b.w * scale;
+    const d = b.d * scale;
+    ctx.fillRect(dx - w/2, dz - d/2, w, d);
+  });
+
+  // Игрок (стрелка в центре)
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(-game.player.rotation.y);
+  ctx.fillStyle = '#f0d97a';
+  ctx.beginPath();
+  ctx.moveTo(0, -6);
+  ctx.lineTo(-4, 4);
+  ctx.lineTo(4, 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Компас (N сверху)
+  ctx.fillStyle = '#8fa8c8';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('N', W/2, 12);
+}
+
+// ============ ГЛАВНЫЙ ЦИКЛ ============
+function gameLoop(){
+  if (!game.running || !game.active) return;
+
+  const dt = Math.min(0.05, game.clock.getDelta());
+
+  updatePlayer(dt);
+  updateCamera(dt);
+  updateHUD();
+  drawMinimap();
+
+  game.renderer.render(game.scene, game.camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// ============ ЭКСПОРТ в глобал для части 3 ============
+window.game = game;
+window.createHumanoid = createHumanoid;
+window.gtaLog = gtaLog;
+window.showHint = showHint;
+window.hideHint = hideHint;
+window.updateHUD = updateHUD 
+// ============ NPC, машины, миссии, экономика ===============
+// ============================================================
+
+// ============ NPC ============
+const NPC_NAMES = ['Алекс','Мария','Иван','Ольга','Пётр','Катя','Дима','Лена',
+                   'Сергей','Анна','Никита','Юля','Вова','Света','Рома','Таня'];
+
+const NPC_DIALOGS = [
+  'Привет, как дела?',
+  'Слышал новости? Говорят, у мэра проблемы…',
+  'Осторожнее, тут неспокойно.',
+  'Дай сотню, а? Ну ладно, не надо.',
+  'Классная сегодня погода!',
+  'Не подскажешь, где тут кафе?',
+  'Я тут живу всю жизнь, а город всё растёт.',
+  'Опа, новенький в городе?',
+  'Как жизнь, братан?',
+  'У меня кот пропал, не видал?'
+];
+
+function spawnNPCs(){
+  const palette = [
+    { skin: 0xf0c090, jacket: 0xdd4444, pants: 0x222222, shoe: 0x111111, hair: 0x3a1a0a },
+    { skin: 0xe0b080, jacket: 0x44dd44, pants: 0x1a1a3a, shoe: 0x2a2a2a, hair: 0x0a0a0a },
+    { skin: 0xd0a070, jacket: 0xdddd44, pants: 0x3a2a2a, shoe: 0x111111, hair: 0x5a3a2a },
+    { skin: 0xf0d0a0, jacket: 0xdd44dd, pants: 0x2a2a2a, shoe: 0x222222, hair: 0x222222 },
+    { skin: 0xe8c098, jacket: 0x44dddd, pants: 0x1a1a2a, shoe: 0x2a2a2a, hair: 0x4a3a1a },
+    { skin: 0xf0b890, jacket: 0xff8844, pants: 0x3a3a3a, shoe: 0x111111, hair: 0x1a1a1a }
+  ];
+
+  const count = 12;
+  for (let i = 0; i < count; i++){
+    const pal = palette[i % palette.length];
+    const { group, parts } = createHumanoid({
+      skinColor: pal.skin,
+      jacketColor: pal.jacket,
+      pantsColor: pal.pants,
+      shoeColor: pal.shoe,
+      hairColor: pal.hair
+    });
+
+    // Начальная позиция рядом с центром
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 15 + Math.random() * 60;
+    group.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+    group.userData = {
+      name: NPC_NAMES[i % NPC_NAMES.length],
+      parts,
+      // Цель для ходьбы
+      targetX: group.position.x,
+      targetZ: group.position.z,
+      walkPhase: Math.random() * Math.PI * 2,
+      speed: 1.2 + Math.random() * 0.8,
+      waitTime: 0,
+      // Диалог
+      lastTalk: 0
+    };
+
+    game.scene.add(group);
+    game.npcs.push(group);
+  }
+  gtaLog('🤖 Жители вышли на улицы');
+}
+
+function updateNPCs(dt){
+  game.npcs.forEach(npc => {
+    const ud = npc.userData;
+
+    // Ждёт?
+    if (ud.waitTime > 0){
+      ud.waitTime -= dt;
+      // Анимация покоя
+      if (ud.parts){
+        ud.parts.armL.rotation.x *= 0.9;
+        ud.parts.armR.rotation.x *= 0.9;
+        ud.parts.legL.rotation.x *= 0.9;
+        ud.parts.legR.rotation.x *= 0.9;
+      }
+      return;
+    }
+
+    // Идёт к цели
+    const dx = ud.targetX - npc.position.x;
+    const dz = ud.targetZ - npc.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist < 1.5){
+      // Дошёл — новая цель
+      ud.waitTime = 1 + Math.random() * 4;
+      const angle = Math.random() * Math.PI * 2;
+      const r = 15 + Math.random() * 70;
+      ud.targetX = Math.cos(angle) * r;
+      ud.targetZ = Math.sin(angle) * r;
+      return;
+    }
+
+    // Движение
+    const vx = (dx / dist) * ud.speed * dt;
+    const vz = (dz / dist) * ud.speed * dt;
+    npc.position.x += vx;
+    npc.position.z += vz;
+
+    // Поворот
+    const targetRot = Math.atan2(dx, dz);
+    npc.rotation.y = targetRot;
+
+    // Анимация ходьбы
+    ud.walkPhase += dt * 7;
+    if (ud.parts){
+      ud.parts.armL.rotation.x = Math.sin(ud.walkPhase) * 0.5;
+      ud.parts.armR.rotation.x = -Math.sin(ud.walkPhase) * 0.5;
+      ud.parts.legL.rotation.x = -Math.sin(ud.walkPhase) * 0.6;
+      ud.parts.legR.rotation.x = Math.sin(ud.walkPhase) * 0.6;
+    }
+
+    // Границы
+    const lim = game.worldSize / 2 - 5;
+    npc.position.x = Math.max(-lim, Math.min(lim, npc.position.x));
+    npc.position.z = Math.max(-lim, Math.min(lim, npc.position.z));
+  });
+}
+
+// Разговор с NPC
+function talkToNPC(npc){
+  const name = npc.userData.name;
+  const line = NPC_DIALOGS[Math.floor(Math.random() * NPC_DIALOGS.length)];
+  showHint(`💬 ${name}: «${line}»`, 3000);
+  gtaLog(`💬 ${name}: ${line}`);
+
+  // Маленькая награда за разговор (иногда)
+  if (Math.random() < 0.15){
+    const bonus = 5 + Math.floor(Math.random() * 15);
+    game.money += bonus;
+    updateHUD();
+    setTimeout(() => {
+      showHint(`💰 +$${bonus} (собеседник угостил)`, 1500);
+    }, 1500);
+  }
+}
+
+// ============ МАШИНЫ ============
+function makeCar(color){
+  const car = new THREE.Group();
+
+  // Кузов
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(2, 0.7, 4),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  body.position.y = 0.55;
+  body.castShadow = true;
+  car.add(body);
+
+  // Кабина
+  const cabin = new THREE.Mesh(
+    new THREE.BoxGeometry(1.7, 0.6, 1.8),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  cabin.position.set(0, 1.2, -0.2);
+  cabin.castShadow = true;
+  car.add(cabin);
+
+  // Стёкла
+  const glassMat = new THREE.MeshPhongMaterial({ color: 0x223344, shininess: 100, transparent: true, opacity: 0.8 });
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.05), glassMat);
+  windshield.position.set(0, 1.2, 0.72);
+  car.add(windshield);
+
+  const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.05), glassMat);
+  rearGlass.position.set(0, 1.2, -1.12);
+  car.add(rearGlass);
+
+  // Колёса
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 12);
+  const wheels = [];
+  const positions = [
+    [-0.95, 0.35,  1.2], [0.95, 0.35,  1.2],
+    [-0.95, 0.35, -1.2], [0.95, 0.35, -1.2]
+  ];
+  positions.forEach(pos => {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(...pos);
+    w.castShadow = true;
+    car.add(w);
+    wheels.push(w);
+  });
+
+  // Фары
+  const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+  const hlL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), headlightMat);
+  hlL.position.set(-0.7, 0.7, 2);
+  car.add(hlL);
+  const hlR = hlL.clone();
+  hlR.position.set(0.7, 0.7, 2);
+  car.add(hlR);
+
+  // Задние фонари
+  const taillightMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+  const tlL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), taillightMat);
+  tlL.position.set(-0.7, 0.7, -2);
+  car.add(tlL);
+  const tlR = tlL.clone();
+  tlR.position.set(0.7, 0.7, -2);
+  car.add(tlR);
+
+  return { group: car, wheels };
+}
+
+function spawnCars(){
+  const colors = [0xdd2222, 0x2222dd, 0x22dd22, 0xdddd22, 0xdd22dd, 0xdddddd, 0x222222, 0x884400];
+  const count = 6;
+
+  for (let i = 0; i < count; i++){
+    const color = colors[i % colors.length];
+    const { group, wheels } = makeCar(color);
+
+    // Случайное место на дороге
+    const gridSize = 6;
+    const blockSize = 22;
+    const roadWidth = 8;
+    const step = blockSize + roadWidth;
+    const offset = -((gridSize - 1) * step) / 2;
+
+    const isVertical = Math.random() < 0.5;
+    if (isVertical){
+      const lane = -offset - step / 2 + Math.floor(Math.random() * (gridSize + 1)) * step;
+      group.position.set(lane, 0, (Math.random() - 0.5) * game.worldSize * 0.8);
+      group.rotation.y = Math.random() < 0.5 ? 0 : Math.PI;
+    } else {
+      const lane = -offset - step / 2 + Math.floor(Math.random() * (gridSize + 1)) * step;
+      group.position.set((Math.random() - 0.5) * game.worldSize * 0.8, 0, lane);
+      group.rotation.y = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+    }
+
+    group.userData = {
+      color,
+      wheels,
+      occupied: false,
+      speed: 0,
+      direction: group.rotation.y
+    };
+
+    game.scene.add(group);
+    game.cars.push(group);
+  }
+  gtaLog('🚗 Машины припаркованы по городу');
+}
+
+// ============ ВХОД / ВЫХОД В МАШИНУ ============
+let drivingCar = null;
+
+function enterNearestCar(){
+  if (drivingCar){
+    // Выход
+    drivingCar.userData.occupied = false;
+    // Ставим игрока рядом с машиной
+    const carPos = drivingCar.position;
+    const side = 3;
+    game.player.position.set(
+      carPos.x + Math.cos(drivingCar.rotation.y + Math.PI/2) * side,
+      0,
+      carPos.z + Math.sin(drivingCar.rotation.y + Math.PI/2) * side
+    );
+    game.player.visible = true;
+    drivingCar = null;
+    gtaLog('🚶 Вышел из машины');
+    showHint('🚶 Вышел из машины', 1500);
+    return;
+  }
+
+  // Ищем ближайшую машину в радиусе 4
+  let nearest = null;
+  let nearestDist = 4;
+  game.cars.forEach(car => {
+    const dx = car.position.x - game.player.position.x;
+    const dz = car.position.z - game.player.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < nearestDist && !car.userData.occupied){
+      nearestDist = d;
+      nearest = car;
+    }
+  });
+
+  if (nearest){
+    nearest.userData.occupied = true;
+    drivingCar = nearest;
+    game.player.visible = false;
+    gtaLog(`🚗 Сел в машину (${['красная','синяя','зелёная','жёлтая','розовая','белая','чёрная','коричневая'][game.cars.indexOf(nearest) % 8]})`);
+    showHint('🚗 В машине. WASD — ехать. F — выйти', 2500);
+  } else {
+    showHint('🚗 Рядом нет машины', 1500);
+  }
+}
+
+// Обновление машины (когда игрок за рулём)
+function updateDrivingCar(dt){
+  if (!drivingCar) return;
+
+  const car = drivingCar;
+  const speed = 18;
+
+  // Ввод
+  let forward = 0;
+  let turn = 0;
+  if (game.keys['KeyW'] || game.keys['ArrowUp']) forward = 1;
+  if (game.keys['KeyS'] || game.keys['ArrowDown']) forward = -1;
+  if (game.keys['KeyA'] || game.keys['ArrowLeft']) turn = 1;
+  if (game.keys['KeyD'] || game.keys['ArrowRight']) turn = -1;
+  if (game.joystick.active){
+    forward = -game.joystick.dy;
+    turn = -game.joystick.dx;
+  }
+
+  // Поворот
+  car.rotation.y += turn * 2 * dt;
+
+  // Движение
+  const vx = Math.sin(car.rotation.y) * forward * speed * dt;
+  const vz = Math.cos(car.rotation.y) * forward * speed * dt;
+  car.position.x += vx;
+  car.position.z += vz;
+
+  // Вращение колёс
+  const wheelSpeed = forward * speed * 0.5;
+  car.userData.wheels.forEach(w => {
+    w.rotation.x += wheelSpeed * dt;
+  });
+
+  // Игрок «внутри» машины
+  game.player.position.copy(car.position);
+
+  // Границы
+  const lim = game.worldSize / 2 - 3;
+  car.position.x = Math.max(-lim, Math.min(lim, car.position.x));
+  car.position.z = Math.max(-lim, Math.min(lim, car.position.z));
+}
+
+// ============ МИССИИ ============
+function createMissions(){
+  // 3 случайные миссии: доставка
+  game.missions = [];
+  for (let i = 0; i < 3; i++){
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 40 + Math.random() * 60;
+    const x = Math.cos(angle) * dist;
+    const z = Math.sin(angle) * dist;
+
+    // Маркер
+    const marker = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.5, 1.5, 0.2, 24),
+      new THREE.MeshBasicMaterial({ color: 0xf0d97a, transparent: true, opacity: 0.6 })
+    );
+    marker.position.set(x, 0.15, z);
+    game.scene.add(marker);
+
+    // Луч света над маркером
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.6, 1.2, 12, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0xf0d97a, transparent: true, opacity: 0.15,
+        side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    beam.position.set(x, 6, z);
+    game.scene.add(beam);
+
+    game.missions.push({
+      id: i,
+      x, z,
+      marker,
+      beam,
+      reward: 50 + Math.floor(Math.random() * 100),
+      completed: false,
+      name: ['Доставка в порт','Срочный заказ','Проверка склада'][i]
+    });
+  }
+  gtaLog(`📋 Доступно миссий: ${game.missions.length}`);
+  updateMissionPanel();
+}
+
+function updateMissionPanel(){
+  const panel = $('missionsPanel');
+  if (!panel) return;
+  const done = game.missions.filter(m => m.completed).length;
+  const total = game.missions.length;
+  if (total > 0){
+    panel.classList.add('show');
+    panel.innerHTML = `📋 Миссии: <b>${done}/${total}</b>`;
+  }
+}
+
+function updateMissions(dt){
+  if (!game.player) return;
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // Анимация маркеров
+  const t = performance.now() / 1000;
+  game.missions.forEach(m => {
+    if (m.completed) return;
+    if (m.marker){
+      m.marker.rotation.y = t * 0.5;
+      m.marker.position.y = 0.15 + Math.sin(t * 2) * 0.1;
+    }
+    if (m.beam){
+      m.beam.material.opacity = 0.15 + Math.sin(t * 2) * 0.05;
+    }
+
+    // Проверка на подход
+    const dx = m.x - px;
+    const dz = m.z - pz;
+    const d = Math.hypot(dx, dz);
+
+    if (d < 3){
+      // Игрок рядом — показать название
+      const cm = $('currentMission');
+      if (cm){
+        cm.classList.add('show');
+        $('missionTitle').textContent = `📦 ${m.name}`;
+        $('missionDesc').textContent = `Награда: $${m.reward} · Нажми F чтобы выполнить`;
+      }
+
+      // Захватить миссию в текущую
+      game.currentMission = m;
+    }
+  });
+
+  // Если далеко от всех
+  if (!game.missions.some(m => !m.completed && Math.hypot(m.x - px, m.z - pz) < 3)){
+    const cm = $('currentMission');
+    if (cm && !game.currentMission) cm.classList.remove('show');
+    if (cm) cm.classList.remove('show');
+  }
+}
+
+function completeMission(){
+  const m = game.currentMission;
+  if (!m || m.completed){
+    showHint('Нет активной миссии', 1500);
+    return;
+  }
+
+  m.completed = true;
+  game.money += m.reward;
+  game.level = 1 + Math.floor(game.money / 200);
+
+  // Убираем маркер
+  if (m.marker) game.scene.remove(m.marker);
+  if (m.beam) game.scene.remove(m.beam);
+
+  updateHUD();
+  updateMissionPanel();
+  gtaLog(`✅ Миссия «${m.name}» выполнена! +$${m.reward}`);
+  showHint(`✅ Миссия выполнена! +$${m.reward}`, 2500);
+
+  game.currentMission = null;
+  const cm = $('currentMission');
+  if (cm) cm.classList.remove('show');
+
+  // Если все выполнены — создаём новые
+  if (game.missions.every(m => m.completed)){
+    setTimeout(() => {
+      createMissions();
+      gtaLog('📋 Доступны новые миссии!');
+    }, 3000);
+  }
+}
+
+// ============ ВЗАИМОДЕЙСТВИЕ (F) ============
+// Перезаписываем doAction из части 2, чтобы добавить логику
+const _oldDoAction = doAction;
+doAction = function(){
+  if (!game.player) return;
+
+  // 1. Если в машине — выйти
+  if (drivingCar){
+    enterNearestCar();
+    return;
+  }
+
+  // 2. Если рядом миссия — выполнить
+  if (game.currentMission && !game.currentMission.completed){
+    completeMission();
+    return;
+  }
+
+  // 3. Если рядом NPC — поговорить
+  let nearestNPC = null;
+  let nearestDist = 3;
+  game.npcs.forEach(npc => {
+    const dx = npc.position.x - game.player.position.x;
+    const dz = npc.position.z - game.player.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < nearestDist){
+      nearestDist = d;
+      nearestNPC = npc;
+    }
+  });
+  if (nearestNPC){
+    talkToNPC(nearestNPC);
+    return;
+  }
+
+  // 4. Если рядом машина — сесть
+  let nearestCar = null;
+  let carDist = 4;
+  game.cars.forEach(car => {
+    if (car.userData.occupied) return;
+    const dx = car.position.x - game.player.position.x;
+    const dz = car.position.z - game.player.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < carDist){
+      carDist = d;
+      nearestCar = car;
+    }
+  });
+  if (nearestCar){
+    enterNearestCar();
+    return;
+  }
+
+  // 5. Ничего рядом
+  showHint('✋ Рядом ничего нет', 1500);
+};
+
+// ============ ПОДСКАЗКИ РЯДОМ ============
+function updateNearbyHints(){
+  if (!game.player) return;
+  if (drivingCar) return;  // в машине не показываем
+
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // Ближайший NPC
+  let npcNear = null, npcDist = 3;
+  game.npcs.forEach(npc => {
+    const d = Math.hypot(npc.position.x - px, npc.position.z - pz);
+    if (d < npcDist){ npcDist = d; npcNear = npc; }
+  });
+
+  if (npcNear){
+    showHint(`💬 ${npcNear.userData.name} · [F] поговорить`, 200);
+    return;
+  }
+
+  // Ближайшая машина
+  let carNear = null, carDist = 4;
+  game.cars.forEach(car => {
+    if (car.userData.occupied) return;
+    const d = Math.hypot(car.position.x - px, car.position.z - pz);
+    if (d < carDist){ carDist = d; carNear = car; }
+  });
+
+  if (carNear){
+    showHint('🚗 [F] сесть в машину', 200);
+    return;
+  }
+
+  // Миссия — уже показывается в отдельной панели
+  if (game.currentMission){
+    showHint('📦 [F] выполнить миссию', 200);
+  }
+}
+
+// ============ ХУКИ В ГЛАВНЫЙ ЦИКЛ ============
+// Перезаписываем updatePlayer из части 2, добавляя логику вождения
+const _oldUpdatePlayer = updatePlayer;
+updatePlayer = function(dt){
+  // Если за рулём — управляем машиной, а не игроком
+  if (drivingCar){
+    updateDrivingCar(dt);
+    return;
+  }
+  _oldUpdatePlayer(dt);
+};
+
+// Перезаписываем gameLoop — добавляем NPC, машины, миссии
+const _oldGameLoop = gameLoop;
+gameLoop = function(){
+  if (!game.running || !game.active) return;
+  const dt = Math.min(0.05, game.clock.getDelta());
+
+  updatePlayer(dt);
+  updateNPCs(dt);
+  updateMissions(dt);
+  updateCamera(dt);
+  updateNearbyHints();
+  updateHUD();
+  drawMinimap();
+
+  game.renderer.render(game.scene, game.camera);
+  requestAnimationFrame(gameLoop);
+};
+
+// ============ ДОБАВЛЯЕМ В initGame ============
+// Вызываем spawnNPCs, spawnCars, createMissions после initGame
+const _oldInitGame = initGame;
+initGame = function(){
+  _oldInitGame();
+  // Даём сцене построиться
+  setTimeout(() => {
+    spawnNPCs();
+    spawnCars();
+    createMissions();
+    gtaLog('🎮 Игра готова! Осмотрись вокруг.');
+  }, 100);
+};
+
+// ============ МИНИ-КАРТА — ДОБАВЛЯЕМ NPC и МАШИНЫ ============
+const _oldDrawMinimap = drawMinimap;
+drawMinimap = function(){
+  // Рисуем стандартную миникарту
+  _oldDrawMinimap();
+
+  const c = $('minimap'); if (!c || !game.player) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const scale = W / game.worldSize;
+  const cx = W / 2, cy = H / 2;
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // NPC (зелёные точки)
+  ctx.fillStyle = '#44dd44';
+  game.npcs.forEach(npc => {
+    const dx = (npc.position.x - px) * scale + cx;
+    const dz = (npc.position.z - pz) * scale + cy;
+    if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+    ctx.beginPath();
+    ctx.arc(dx, dz, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Машины (синие точки)
+  ctx.fillStyle = '#4488dd';
+  game.cars.forEach(car => {
+    const dx = (car.position.x - px) * scale + cx;
+    const dz = (car.position.z - pz) * scale + cy;
+    if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+    ctx.beginPath();
+    ctx.arc(dx, dz, 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Миссии (золотые круги с обводкой)
+  game.missions.forEach(m => {
+    if (m.completed) return;
+    const dx = (m.x - px) * scale + cx;
+    const dz = (m.z - pz) * scale + cy;
+    if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+    ctx.fillStyle = '#f0d97a';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(dx, dz, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+};
+
+gtaLog('✅ Часть 3 загружена: NPC, машины, миссии');
+
+ // ============================================================
+// ============ ГОРОДОК — GTA-режим (часть 4) ================
+// ======= Оружие · Полиция · Магазины · День/ночь ===========
+// ============================================================
+
+// ============ ОРУЖИЕ ============
+game.weapon = {
+  current: 'fist',     // 'fist' | 'pistol'
+  hasPistol: false,
+  ammo: 0,
+  maxAmmo: 30,
+  cooldown: 0,
+  bullets: []
+};
+
+function drawCrosshair(show){
+  const c = $('crosshair');
+  if (!c) return;
+  if (show) c.classList.add('show');
+  else c.classList.remove('show');
+}
+
+function shoot(){
+  if (!game.player || game.weapon.cooldown > 0) return;
+  if (game.weapon.current === 'fist') return;
+  if (game.weapon.ammo <= 0){
+    showHint('🔫 Нет патронов!', 1200);
+    return;
+  }
+
+  game.weapon.ammo--;
+  game.weapon.cooldown = 0.25;
+
+  // Спавн пули
+  const dir = new THREE.Vector3(0, 0, 1);
+  dir.applyQuaternion(game.player.quaternion);
+  const start = game.player.position.clone().add(new THREE.Vector3(0, 1.3, 0));
+  start.addScaledVector(dir, 0.6);
+
+  const bulletGeo = new THREE.SphereGeometry(0.08, 6, 6);
+  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff44 });
+  const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+  bullet.position.copy(start);
+  game.scene.add(bullet);
+
+  game.weapon.bullets.push({
+    mesh: bullet,
+    dir: dir.clone(),
+    life: 1.5,
+    speed: 60
+  });
+
+  // Вспышка на стволе
+  const flash = new THREE.PointLight(0xffeeaa, 4, 8);
+  flash.position.copy(start);
+  game.scene.add(flash);
+  setTimeout(() => game.scene.remove(flash), 80);
+
+  // Проверка попадания в NPC
+  game.npcs.forEach(npc => {
+    const npcPos = npc.position.clone().add(new THREE.Vector3(0, 1.0, 0));
+    const dist = npcPos.distanceTo(start);
+    if (dist < 25){
+      // Простая проверка: угол между dir и направлением на NPC
+      const toNPC = npcPos.clone().sub(start).normalize();
+      const angle = dir.angleTo(toNPC);
+      if (angle < 0.15){
+        // Попадание!
+        npc.userData.killed = true;
+        npc.userData.killedAt = performance.now();
+        game.police.wanted += 1;
+        if (game.police.wanted > 5) game.police.wanted = 5;
+        gtaLog(`💥 Попадание в NPC! Розыск: ${'★'.repeat(game.police.wanted)}`);
+        // NPC падает (наклон)
+        npc.rotation.z = Math.PI / 2;
+        // Кровь? Нет, просто частицы
+        spawnHitParticles(npc.position, 0xff3333);
+      }
+    }
+  });
+
+  // Проверка попадания в машины
+  game.cars.forEach(car => {
+    const carPos = car.position.clone().add(new THREE.Vector3(0, 0.7, 0));
+    const dist = carPos.distanceTo(start);
+    if (dist < 25){
+      const toCar = carPos.clone().sub(start).normalize();
+      const angle = dir.angleTo(toCar);
+      if (angle < 0.3){
+        spawnHitParticles(car.position, 0xffaa00);
+        gtaLog('💥 Попадание в машину');
+      }
+    }
+  });
+}
+
+function spawnHitParticles(pos, color){
+  const count = 6;
+  for (let i = 0; i < count; i++){
+    const geo = new THREE.SphereGeometry(0.05, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.copy(pos).add(new THREE.Vector3(0, 1, 0));
+    const vx = (Math.random() - 0.5) * 4;
+    const vy = Math.random() * 3 + 1;
+    const vz = (Math.random() - 0.5) * 4;
+    game.scene.add(p);
+    game.weapon.bullets.push({
+      mesh: p,
+      dir: new THREE.Vector3(vx, vy, vz),
+      life: 0.5,
+      speed: 5,
+      isParticle: true
+    });
+  }
+}
+
+function updateBullets(dt){
+  for (let i = game.weapon.bullets.length - 1; i >= 0; i--){
+    const b = game.weapon.bullets[i];
+    b.life -= dt;
+    b.mesh.position.addScaledVector(b.dir, b.speed * dt);
+    if (b.isParticle){
+      b.dir.y -= 8 * dt;  // гравитация для частиц
+      b.mesh.material.opacity = Math.max(0, b.life * 2);
+    }
+    if (b.life <= 0){
+      game.scene.remove(b.mesh);
+      b.mesh.geometry.dispose();
+      b.mesh.material.dispose();
+      game.weapon.bullets.splice(i, 1);
+    }
+  }
+  if (game.weapon.cooldown > 0) game.weapon.cooldown -= dt;
+}
+
+function switchWeapon(){
+  if (!game.weapon.hasPistol){
+    showHint('🔫 Нет оружия. Купи в магазине', 1500);
+    return;
+  }
+  game.weapon.current = game.weapon.current === 'pistol' ? 'fist' : 'pistol';
+  if (game.weapon.current === 'pistol'){
+    showHint(`🔫 Пистолет (${game.weapon.ammo}/${game.weapon.maxAmmo})`, 1500);
+    drawCrosshair(true);
+  } else {
+    showHint('👊 Кулаки', 1500);
+    drawCrosshair(false);
+  }
+  updateWeaponHUD();
+}
+
+function updateWeaponHUD(){
+  // Просто подсказка в HUD
+  const hud = $('hudInfo');
+  if (!hud) return;
+  let wl = $('hudWeapon');
+  if (!wl){
+    wl = document.createElement('div');
+    wl.id = 'hudWeapon';
+    wl.className = 'row';
+    wl.innerHTML = '<span class="label">🔫 Оружие:</span><span class="value" id="hudWeaponVal">Кулаки</span>';
+    hud.appendChild(wl);
+  }
+  const val = $('hudWeaponVal');
+  if (val){
+    if (game.weapon.current === 'pistol') val.textContent = `Пистолет (${game.weapon.ammo})`;
+    else val.textContent = 'Кулаки';
+  }
+}
+
+// ============ ПОЛИЦИЯ / РОЗЫСК ============
+game.police = {
+  wanted: 0,          // 0–5 звёзд
+  officers: [],
+  nextSpawn: 0,
+  catchDistance: 2
+};
+
+function spawnPolice(){
+  if (game.police.officers.length >= game.police.wanted * 2) return;
+
+  const { group, parts } = createHumanoid({
+    skinColor: 0xe0b080,
+    jacketColor: 0x1a2a5a,   // синяя форма
+    pantsColor: 0x0a1a3a,
+    shoeColor: 0x111111,
+    hairColor: 0x222222
+  });
+
+  // Спавним в стороне от игрока
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 40 + Math.random() * 20;
+  group.position.set(
+    game.player.position.x + Math.cos(angle) * dist,
+    0,
+    game.player.position.z + Math.sin(angle) * dist
+  );
+
+  group.userData = {
+    parts,
+    speed: 5,
+    walkPhase: 0,
+    isPolice: true
+  };
+
+  // Красная мигалка над головой
+  const lightGeo = new THREE.SphereGeometry(0.15, 8, 8);
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  const light = new THREE.Mesh(lightGeo, lightMat);
+  light.position.y = 2.3;
+  group.add(light);
+  group.userData.light = light;
+
+  game.scene.add(group);
+  game.police.officers.push(group);
+  gtaLog('🚔 Полиция на хвосте!');
+}
+
+function updatePolice(dt){
+  // Спавн
+  if (game.police.wanted > 0){
+    game.police.nextSpawn -= dt;
+    if (game.police.nextSpawn <= 0){
+      spawnPolice();
+      game.police.nextSpawn = 3;
+    }
+  }
+
+  // Движение к игроку
+  game.police.officers.forEach(officer => {
+    // Мигалка
+    if (officer.userData.light){
+      officer.userData.light.material.color.setHex(
+        Math.floor(performance.now() / 300) % 2 === 0 ? 0xff2222 : 0x2200aa
+      );
+    }
+
+    const dx = game.player.position.x - officer.position.x;
+    const dz = game.player.position.z - officer.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist > 1.5){
+      const vx = (dx / dist) * officer.userData.speed * dt;
+      const vz = (dz / dist) * officer.userData.speed * dt;
+      officer.position.x += vx;
+      officer.position.z += vz;
+      officer.rotation.y = Math.atan2(dx, dz);
+
+      // Анимация бега
+      officer.userData.walkPhase += dt * 12;
+      const parts = officer.userData.parts;
+      if (parts){
+        parts.armL.rotation.x = Math.sin(officer.userData.walkPhase) * 0.7;
+        parts.armR.rotation.x = -Math.sin(officer.userData.walkPhase) * 0.7;
+        parts.legL.rotation.x = -Math.sin(officer.userData.walkPhase) * 0.8;
+        parts.legR.rotation.x = Math.sin(officer.userData.walkPhase) * 0.8;
+      }
+    }
+
+    // Поймали?
+    if (dist < game.police.catchDistance){
+      arrested();
+    }
+  });
+}
+
+function arrested(){
+  gtaLog('🚔 Тебя арестовали!');
+  showHint('🚔 АРЕСТ! -$100, розыск сброшен', 3000);
+  game.money = Math.max(0, game.money - 100);
+  game.police.wanted = 0;
+  // Убираем всех полицейских
+  game.police.officers.forEach(o => game.scene.remove(o));
+  game.police.officers = [];
+  // Телепорт в центр
+  game.player.position.set(0, 0, 0);
+  updateHUD();
+}
+
+function updateWantedDisplay(){
+  const hud = $('hudInfo');
+  if (!hud) return;
+  let wl = $('hudWanted');
+  if (!wl){
+    wl = document.createElement('div');
+    wl.id = 'hudWanted';
+    wl.className = 'row';
+    wl.innerHTML = '<span class="label">🚔 Розыск:</span><span class="value" id="hudWantedVal">—</span>';
+    hud.appendChild(wl);
+  }
+  const val = $('hudWantedVal');
+  if (val){
+    if (game.police.wanted === 0) val.textContent = '—';
+    else val.textContent = '★'.repeat(game.police.wanted);
+    val.style.color = game.police.wanted >= 3 ? '#ff4444' : '#ffaa44';
+  }
+
+  // Снижение розыска со временем (если далеко от полиции)
+  if (game.police.wanted > 0){
+    const anyNear = game.police.officers.some(o =>
+      o.position.distanceTo(game.player.position) < 30
+    );
+    if (!anyNear){
+      game.police.wantedCooldown = (game.police.wantedCooldown || 0) + 1/60;
+      if (game.police.wantedCooldown > 15){
+        game.police.wanted = Math.max(0, game.police.wanted - 1);
+        game.police.wantedCooldown = 0;
+        if (game.police.wanted === 0){
+          game.police.officers.forEach(o => game.scene.remove(o));
+          game.police.officers = [];
+          gtaLog('🚔 Розыск снят');
+        }
+      }
+    }
+  }
+}
+
+// ============ МАГАЗИНЫ ============
+function createShops(){
+  game.shops = [];
+  const spots = [
+    { x: -50, z: -50, name: '🔫 Оружейный', type: 'weapon' },
+    { x: 50, z: -50, name: '🏥 Аптека', type: 'pharmacy' },
+    { x: -50, z: 50, name: '🍔 Закусочная', type: 'food' },
+    { x: 50, z: 50, name: '🛒 Магазин', type: 'store' }
+  ];
+
+  spots.forEach(s => {
+    // Кубик-магазин
+    const geo = new THREE.BoxGeometry(8, 5, 8);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xddaa55 });
+    const shop = new THREE.Mesh(geo, mat);
+    shop.position.set(s.x, 2.5, s.z);
+    shop.castShadow = true;
+    game.scene.add(shop);
+
+    // Крыша
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(9, 0.6, 9),
+      new THREE.MeshLambertMaterial({ color: 0x884422 })
+    );
+    roof.position.set(s.x, 5.3, s.z);
+    game.scene.add(roof);
+
+    // Вывеска-маркер (светящийся цилиндр над крышей)
+    const sign = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.8, 0.8, 0.3, 16),
+      new THREE.MeshBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.8 })
+    );
+    sign.position.set(s.x, 7, s.z);
+    game.scene.add(sign);
+
+    game.shops.push({ ...s, mesh: shop, sign });
+  });
+
+  gtaLog('🏪 Открыты магазины: оружие, аптека, еда, магазин');
+}
+
+function findNearbyShop(){
+  if (!game.shops) return null;
+  let nearest = null;
+  let dist = 6;
+  game.shops.forEach(s => {
+    const d = Math.hypot(s.x - game.player.position.x, s.z - game.player.position.z);
+    if (d < dist){ dist = d; nearest = s; }
+  });
+  return nearest;
+}
+
+function openShop(shop){
+  if (!shop) return;
+
+  if (shop.type === 'weapon'){
+    let msg = `🔫 Оружейный магазин\n\n`;
+    msg += `1) Купить пистолет — $200\n`;
+    msg += `2) Купить патроны (10) — $50\n`;
+    msg += `\nУ тебя: $${game.money}`;
+    const choice = prompt(msg + '\n\nВведи 1 или 2:');
+    if (choice === '1'){
+      if (game.money >= 200){
+        game.money -= 200;
+        game.weapon.hasPistol = true;
+        game.weapon.ammo += 10;
+        gtaLog('🔫 Куплен пистолет (+10 патронов)');
+      } else gtaLog('❌ Не хватает денег');
+    } else if (choice === '2'){
+      if (game.money >= 50){
+        game.money -= 50;
+        game.weapon.ammo += 10;
+        gtaLog('🔫 +10 патронов');
+      } else gtaLog('❌ Не хватает денег');
+    }
+  }
+  else if (shop.type === 'pharmacy'){
+    if (game.money >= 50 && game.health < 100){
+      game.money -= 50;
+      game.health = Math.min(100, game.health + 50);
+      gtaLog('🏥 Здоровье +50');
+    } else if (game.health >= 100){
+      gtaLog('💚 Ты и так здоров');
+    } else gtaLog('❌ Не хватает денег ($50 нужно)');
+  }
+  else if (shop.type === 'food'){
+    if (game.money >= 20){
+      game.money -= 20;
+      game.health = Math.min(100, game.health + 15);
+      gtaLog('🍔 Вкусно поел (+15 HP)');
+    } else gtaLog('❌ Не хватает денег ($20 нужно)');
+  }
+  else if (shop.type === 'store'){
+    gtaLog('🛒 Магазин пока пустой');
+  }
+
+  updateHUD();
+  updateWeaponHUD();
+}
+
+// ============ СМЕНА ДНЯ И НОЧИ ============
+game.time = {
+  hour: 12,         // 0–24
+  daySpeed: 1/30,   // за 30 сек — 1 игровой час
+  sunLight: null,
+  ambient: null,
+  skyColor: new THREE.Color(0x87ceeb)
+};
+
+function updateDayNight(dt){
+  game.time.hour += game.time.daySpeed * dt;
+  if (game.time.hour >= 24) game.time.hour -= 24;
+
+  const h = game.time.hour;
+
+  // Угол солнца (0 — рассвет, 6 — полдень, 12 — закат, 18 — ночь)
+  const angle = (h / 24) * Math.PI * 2 - Math.PI / 2;
+
+  // Солнце движется по небу
+  if (game.sun){
+    game.sun.position.x = Math.cos(angle) * 80;
+    game.sun.position.y = Math.sin(angle) * 80;
+    game.sun.position.z = 20;
+    // Интенсивность: днём 1.0, ночью 0.1
+    const sunIntensity = Math.max(0.1, Math.sin(angle) + 0.3);
+    game.sun.intensity = sunIntensity;
+  }
+
+  // Цвет неба
+  let skyR, skyG, skyB;
+  if (h >= 5 && h < 8){        // Рассвет
+    const t = (h - 5) / 3;
+    skyR = 1.0 - t * 0.4; skyG = 0.7 + t * 0.1; skyB = 0.5 + t * 0.3;
+  } else if (h >= 8 && h < 17){ // День
+    skyR = 0.53; skyG = 0.81; skyB = 0.92;
+  } else if (h >= 17 && h < 20){ // Закат
+    const t = (h - 17) / 3;
+    skyR = 1.0 - t * 0.2; skyG = 0.5 - t * 0.3; skyB = 0.3 - t * 0.1;
+  } else {                      // Ночь
+    skyR = 0.05; skyG = 0.05; skyB = 0.15;
+  }
+
+  // Плавный переход
+  const curColor = game.scene.background;
+  curColor.r += (skyR - curColor.r) * dt * 2;
+  curColor.g += (skyG - curColor.g) * dt * 2;
+  curColor.b += (skyB - curColor.b) * dt * 2;
+
+  // Ambient тоже меняется
+  if (game.ambient){
+    const ambIntensity = 0.25 + Math.max(0, Math.sin(angle)) * 0.4;
+    game.ambient.intensity = ambIntensity;
+  }
+
+  // Fog соответствует небу
+  if (game.scene.fog){
+    game.scene.fog.color.copy(curColor);
+  }
+
+  // Отображаем время в HUD
+  let wl = $('hudTime');
+  if (!wl){
+    const hud = $('hudInfo');
+    if (hud){
+      wl = document.createElement('div');
+      wl.id = 'hudTime';
+      wl.className = 'row';
+      wl.innerHTML = '<span class="label">🕐 Время:</span><span class="value" id="hudTimeVal">12:00</span>';
+      hud.appendChild(wl);
+    }
+  }
+  const val = $('hudTimeVal');
+  if (val){
+    const hh = Math.floor(h).toString().padStart(2, '0');
+    const mm = Math.floor((h % 1) * 60).toString().padStart(2, '0');
+    val.textContent = `${hh}:${mm}`;
+  }
+}
+
+// Сохраняем ссылки на свет в game
+const _oldInitForLight = initGame;
+initGame = function(){
+  _oldInitForLight();
+  setTimeout(() => {
+    if (game.scene){
+      game.scene.traverse(obj => {
+        if (obj.isDirectionalLight) game.sun = obj;
+        if (obj.isAmbientLight) game.ambient = obj;
+      });
+    }
+    createShops();
+    updateWeaponHUD();
+  }, 200);
+};
+
+// ============ ОБНОВЛЯЕМ doAction ДЛЯ МАГАЗИНОВ ============
+const _oldDoActionP4 = doAction;
+doAction = function(){
+  // 1. Магазин рядом?
+  const shop = findNearbyShop();
+  if (shop){
+    openShop(shop);
+    return;
+  }
+  // 2. Всё остальное из части 3
+  _oldDoActionP4();
+};
+
+// ============ ПОДСКАЗКИ РЯДОМ — ОБНОВЛЯЕМ ============
+const _oldNearbyHints = updateNearbyHints;
+updateNearbyHints = function(){
+  if (drivingCar) return;
+  const shop = findNearbyShop();
+  if (shop){
+    showHint(`🏪 ${shop.name} · [F] войти`, 200);
+    return;
+  }
+  _oldNearbyHints();
+};
+
+// ============ ГЛАВНЫЙ ЦИКЛ — ДОБАВЛЯЕМ НОВОЕ ============
+const _oldGameLoopP4 = gameLoop;
+gameLoop = function(){
+  if (!game.running || !game.active) return;
+  const dt = Math.min(0.05, game.clock.getDelta());
+
+  updatePlayer(dt);
+  updateNPCs(dt);
+  updateMissions(dt);
+  updateBullets(dt);
+  updatePolice(dt);
+  updateDayNight(dt);
+  updateCamera(dt);
+  updateNearbyHints();
+  updateHUD();
+  updateWantedDisplay();
+  drawMinimap();
+
+  game.renderer.render(game.scene, game.camera);
+  requestAnimationFrame(gameLoop);
+};
+
+// ============ ГОРЯЧИЕ КЛАВИШИ ============
+window.addEventListener('keydown', e => {
+  if (!game.active) return;
+  if (e.code === 'Digit1'){ switchWeapon(); }
+  if (e.code === 'KeyR'){ /* перезарядка? */ }
+  if (e.code === 'KeyQ'){ switchWeapon(); }
+});
+
+// ============ КНОПКА СТРЕЛЬБЫ ============
+// Найдём кнопку действия и добавим отдельную для стрельбы
+setTimeout(() => {
+  const container = $('actionButtons');
+  if (container && !$('btnShoot')){
+    const btn = document.createElement('button');
+    btn.id = 'btnShoot';
+    btn.className = 'action-btn small';
+    btn.textContent = '🔫';
+    btn.addEventListener('click', shoot);
+    btn.addEventListener('touchstart', e => { e.preventDefault(); shoot(); });
+    container.insertBefore(btn, container.firstChild);
+  }
+
+  // Кнопка смены оружия
+  const hud = $('hudTopRight');
+  if (hud && !$('btnWeapon')){
+    const btn = document.createElement('button');
+    btn.id = 'btnWeapon';
+    btn.className = 'hud-btn';
+    btn.textContent = '🔫';
+    btn.title = 'Сменить оружие (Q)';
+    btn.addEventListener('click', switchWeapon);
+    hud.insertBefore(btn, hud.firstChild);
+  }
+}, 300);
+
+// ============ МЫШЬ: ЛКМ = СТРЕЛЬБА ============
+window.addEventListener('mousedown', e => {
+  if (!game.active || !game.running) return;
+  if (e.button === 0 && game.weapon.current === 'pistol'){
+    if (e.target.id === 'gameCanvas'){
+      shoot();
+    }
+  }
+});
+
+// ============ МИНИ-КАРТА — ДОБАВЛЯЕМ МАГАЗИНЫ И ПОЛИЦИЮ ============
+const _oldDrawMinimapP4 = drawMinimap;
+drawMinimap = function(){
+  _oldDrawMinimapP4();
+
+  const c = $('minimap'); if (!c || !game.player) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const scale = W / game.worldSize;
+  const cx = W / 2, cy = H / 2;
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // Магазины (оранжевые квадраты)
+  if (game.shops){
+    ctx.fillStyle = '#ffaa44';
+    game.shops.forEach(s => {
+      const dx = (s.x - px) * scale + cx;
+      const dz = (s.z - pz) * scale + cy;
+      if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+      ctx.fillRect(dx - 3, dz - 3, 6, 6);
+    });
+  }
+
+  // Полиция (красные точки с обводкой)
+  if (game.police && game.police.officers){
+    game.police.officers.forEach(o => {
+      const dx = (o.position.x - px) * scale + cx;
+      const dz = (o.position.z - pz) * scale + cy;
+      if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+      ctx.fillStyle = '#ff2222';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(dx, dz, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+};
+
+gtaLog('✅ Часть 4 загружена: оружие, полиция, магазины, день/ночь'); // ============================================================
+// ============ ГОРОДОК — GTA-режим (часть 5) ================
+// === Звуки · Патрули · Смерть · Дом · Клады · Погода ======
+// ============================================================
+
+// ============ ЗВУКИ (Web Audio API, без файлов) ============
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = AudioCtx ? new AudioCtx() : null;
+
+function playTone(freq, duration, type = 'sine', volume = 0.15){
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playShoot(){
+  playTone(180, 0.08, 'square', 0.2);
+  setTimeout(() => playTone(80, 0.1, 'sawtooth', 0.15), 20);
+}
+
+function playPickup(){
+  playTone(660, 0.08, 'sine', 0.2);
+  setTimeout(() => playTone(880, 0.1, 'sine', 0.2), 80);
+}
+
+function playMoney(){
+  playTone(880, 0.08, 'sine', 0.2);
+  setTimeout(() => playTone(1100, 0.08, 'sine', 0.2), 70);
+  setTimeout(() => playTone(1320, 0.12, 'sine', 0.2), 140);
+}
+
+function playSiren(){
+  playTone(600, 0.3, 'sine', 0.1);
+  setTimeout(() => playTone(900, 0.3, 'sine', 0.1), 300);
+}
+
+function playArrest(){
+  playTone(220, 0.15, 'square', 0.2);
+  setTimeout(() => playTone(180, 0.15, 'square', 0.2), 150);
+  setTimeout(() => playTone(140, 0.3, 'square', 0.2), 300);
+}
+
+function playThunder(){
+  playTone(60, 0.6, 'sawtooth', 0.15);
+}
+
+// Хук на выстрел
+const _oldShoot = shoot;
+shoot = function(){
+  const hadAmmo = game.weapon && game.weapon.ammo > 0;
+  _oldShoot();
+  if (hadAmmo) playShoot();
+};
+
+// ============ ПАТРУЛЬНЫЕ МАШИНЫ ============
+game.police.cars = [];
+
+function spawnPoliceCar(){
+  if (game.police.cars.length >= 3) return;
+  if (!game.player) return;
+
+  // Создаём сине-белую машину
+  const { group, wheels } = makeCar(0x1a2a5a);
+
+  // Белая полоса сверху
+  const stripe = new THREE.Mesh(
+    new THREE.BoxGeometry(2.05, 0.15, 4.05),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+  stripe.position.y = 0.85;
+  group.add(stripe);
+
+  // Мигалка на крыше
+  const sirenL = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff2222 })
+  );
+  sirenL.position.set(-0.35, 1.6, -0.2);
+  group.add(sirenL);
+  const sirenR = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2222ff })
+  );
+  sirenR.position.set(0.35, 1.6, -0.2);
+  group.add(sirenR);
+
+  // Спавн далеко от игрока
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 50 + Math.random() * 30;
+  group.position.set(
+    game.player.position.x + Math.cos(angle) * dist,
+    0,
+    game.player.position.z + Math.sin(angle) * dist
+  );
+  group.userData = {
+    wheels,
+    sirenL, sirenR,
+    sirenPhase: Math.random() * Math.PI * 2,
+    speed: 12
+  };
+  game.scene.add(group);
+  game.police.cars.push(group);
+  playSiren();
+}
+
+function updatePoliceCars(dt){
+  if (game.police.wanted <= 0){
+    if (game.police.cars.length > 0){
+      game.police.cars.forEach(c => game.scene.remove(c));
+      game.police.cars = [];
+    }
+    return;
+  }
+
+  // Спавн
+  game.police.carSpawnTimer = (game.police.carSpawnTimer || 0) + dt;
+  if (game.police.carSpawnTimer > 4 && game.police.cars.length < Math.min(3, game.police.wanted)){
+    game.police.carSpawnTimer = 0;
+    spawnPoliceCar();
+  }
+
+  // Движение к игроку
+  game.police.cars.forEach(car => {
+    const ud = car.userData;
+
+    // Мигалки
+    ud.sirenPhase += dt * 8;
+    const on = Math.sin(ud.sirenPhase) > 0;
+    ud.sirenL.material.color.setHex(on ? 0xff2222 : 0x330000);
+    ud.sirenR.material.color.setHex(on ? 0x000033 : 0x2222ff);
+
+    const dx = game.player.position.x - car.position.x;
+    const dz = game.player.position.z - car.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist > 3){
+      const vx = (dx / dist) * ud.speed * dt;
+      const vz = (dz / dist) * ud.speed * dt;
+      car.position.x += vx;
+      car.position.z += vz;
+      car.rotation.y = Math.atan2(dx, dz);
+
+      // Крутим колёса
+      ud.wheels.forEach(w => w.rotation.x += 10 * dt);
+    }
+
+    // Поймали?
+    if (dist < 3){
+      arrested();
+    }
+  });
+}
+
+// ============ ДОМ ИГРОКА (сон до утра) ============
+let playerHouse = null;
+
+function createHouse(){
+  const x = -80, z = -80;
+
+  // Домик
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(10, 6, 10),
+    new THREE.MeshLambertMaterial({ color: 0xcc8844 })
+  );
+  body.position.set(x, 3, z);
+  body.castShadow = true;
+  game.scene.add(body);
+
+  // Крыша-пирамида
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(8, 3, 4),
+    new THREE.MeshLambertMaterial({ color: 0x662222 })
+  );
+  roof.position.set(x, 7.5, z);
+  roof.rotation.y = Math.PI / 4;
+  game.scene.add(roof);
+
+  // Дверь
+  const door = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.8, 3),
+    new THREE.MeshBasicMaterial({ color: 0x442211 })
+  );
+  door.position.set(x, 1.5, z + 5.05);
+  game.scene.add(door);
+
+  // Маркер-«звезда» над домом
+  const marker = new THREE.Mesh(
+    new THREE.CylinderGeometry(1, 1, 0.3, 16),
+    new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.7 })
+  );
+  marker.position.set(x, 11, z);
+  game.scene.add(marker);
+
+  playerHouse = { x, z, marker };
+  gtaLog('🏠 Твой дом появился на карте (синий маркер)');
+}
+
+function sleepAtHome(){
+  gtaLog('😴 Ты поспал до утра. Здоровье восстановлено.');
+  showHint('😴 Проснулся отдохнувшим', 2500);
+  game.time.hour = 7;
+  game.health = 100;
+  updateHUD();
+  playPickup();
+}
+
+// ============ СМЕРТЬ И ВОЗРОЖДЕНИЕ ============
+function takeDamage(amount){
+  game.health = Math.max(0, game.health - amount);
+  updateHUD();
+  // Красная вспышка на экране
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;background:#ff000044;z-index:999;pointer-events:none;';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 150);
+
+  if (game.health <= 0) die();
+}
+
+function die(){
+  gtaLog('💀 Ты погиб. Восстанавливаешься в центре…');
+  showHint('💀 Возрождение в центре', 3000);
+  playArrest();
+
+  // Эффект затемнения
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:1500;transition:opacity 0.5s;';
+  document.body.appendChild(overlay);
+  setTimeout(() => { overlay.style.opacity = '1'; }, 10);
+  setTimeout(() => {
+    game.health = 100;
+    game.money = Math.max(0, game.money - 50);
+    game.police.wanted = 0;
+    game.player.position.set(0, 0, 0);
+    if (drivingCar){ drivingCar.userData.occupied = false; drivingCar = null; game.player.visible = true; }
+    updateHUD();
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.remove(), 600);
+  }, 1200);
+}
+
+// ============ КЛАДЫ ============
+game.treasures = [];
+game.treasureSpawnTimer = 0;
+
+function spawnTreasure(){
+  if (game.treasures.length >= 5) return;
+  if (!game.player) return;
+
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 30 + Math.random() * 80;
+  const x = game.player.position.x + Math.cos(angle) * dist;
+  const z = game.player.position.z + Math.sin(angle) * dist;
+
+  // Ограничение по миру
+  const lim = game.worldSize / 2 - 10;
+  const cx = Math.max(-lim, Math.min(lim, x));
+  const cz = Math.max(-lim, Math.min(lim, z));
+
+  // Сундук
+  const box = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 0.8, 0.9),
+    new THREE.MeshLambertMaterial({ color: 0xaa7722 })
+  );
+  box.position.set(cx, 0.4, cz);
+  box.castShadow = true;
+  game.scene.add(box);
+
+  // Золотая крышка
+  const lid = new THREE.Mesh(
+    new THREE.BoxGeometry(1.3, 0.15, 1.0),
+    new THREE.MeshBasicMaterial({ color: 0xf0d97a })
+  );
+  lid.position.set(cx, 0.85, cz);
+  game.scene.add(lid);
+
+  // Подсветка — золотое свечение
+  const glow = new THREE.PointLight(0xffcc44, 1.5, 8);
+  glow.position.set(cx, 1.5, cz);
+  game.scene.add(glow);
+
+  // Маркер над сундуком
+  const marker = new THREE.Mesh(
+    new THREE.ConeGeometry(0.5, 1.2, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffdd44 })
+  );
+  marker.position.set(cx, 2.5, cz);
+  marker.rotation.x = Math.PI;
+  game.scene.add(marker);
+
+  game.treasures.push({
+    x: cx, z: cz,
+    box, lid, glow, marker,
+    amount: 25 + Math.floor(Math.random() * 75)
+  });
+}
+
+function collectTreasure(t){
+  game.money += t.amount;
+  playMoney();
+  gtaLog(`💰 Нашёл клад! +$${t.amount}`);
+  showHint(`💰 +$${t.amount}`, 2000);
+  updateHUD();
+
+  // Убираем
+  game.scene.remove(t.box);
+  game.scene.remove(t.lid);
+  game.scene.remove(t.glow);
+  game.scene.remove(t.marker);
+
+  const idx = game.treasures.indexOf(t);
+  if (idx >= 0) game.treasures.splice(idx, 1);
+}
+
+function updateTreasures(dt){
+  // Спавн
+  game.treasureSpawnTimer += dt;
+  if (game.treasureSpawnTimer > 20){
+    game.treasureSpawnTimer = 0;
+    spawnTreasure();
+  }
+
+  // Анимация и сбор
+  const t = performance.now() / 1000;
+  for (let i = game.treasures.length - 1; i >= 0; i--){
+    const tr = game.treasures[i];
+    if (tr.marker) tr.marker.rotation.y = t * 2;
+    if (tr.marker) tr.marker.position.y = 2.5 + Math.sin(t * 3) * 0.15;
+    if (tr.glow) tr.glow.intensity = 1.2 + Math.sin(t * 4) * 0.5;
+
+    const dx = tr.x - game.player.position.x;
+    const dz = tr.z - game.player.position.z;
+    if (Math.hypot(dx, dz) < 2.5){
+      collectTreasure(tr);
+    }
+  }
+}
+
+// ============ ОБЛАКА НА НЕБЕ ============
+game.clouds = [];
+
+function createSkyClouds(){
+  const cloudMat = new THREE.MeshLambertMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.85
+  });
+  const count = 12;
+  for (let i = 0; i < count; i++){
+    const cloudGroup = new THREE.Group();
+    // 3–4 сферы-«пузыря»
+    const parts = 3 + Math.floor(Math.random() * 2);
+    for (let j = 0; j < parts; j++){
+      const size = 4 + Math.random() * 4;
+      const puff = new THREE.Mesh(
+        new THREE.SphereGeometry(size, 8, 8),
+        cloudMat
+      );
+      puff.position.set(
+        (Math.random() - 0.5) * 12,
+        (Math.random() - 0.5) * 3,
+        (Math.random() - 0.5) * 12
+      );
+      cloudGroup.add(puff);
+    }
+    cloudGroup.position.set(
+      (Math.random() - 0.5) * 200,
+      40 + Math.random() * 15,
+      (Math.random() - 0.5) * 200
+    );
+    cloudGroup.userData.speed = 0.5 + Math.random() * 1.5;
+    game.scene.add(cloudGroup);
+    game.clouds.push(cloudGroup);
+  }
+}
+
+function updateClouds(dt){
+  const lim = 120;
+  game.clouds.forEach(c => {
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > lim){
+      c.position.x = -lim;
+      c.position.z = (Math.random() - 0.5) * 200;
+    }
+  });
+}
+
+// ============ ПОГОДА ============
+game.weather = {
+  current: 'clear',       // 'clear' | 'rain' | 'fog'
+  timer: 30,              // секунд до смены
+  rainParticles: null
+};
+
+function setWeather(type){
+  game.weather.current = type;
+
+  // Убираем старую погоду
+  if (game.scene.fog){
+    game.scene.fog.near = type === 'fog' ? 15 : 80;
+    game.scene.fog.far = type === 'fog' ? 60 : 200;
+  }
+
+  // Частицы дождя
+  if (type === 'rain'){
+    if (!game.weather.rainParticles){
+      const geo = new THREE.BufferGeometry();
+      const count = 500;
+      const pos = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++){
+        pos[i*3] = (Math.random() - 0.5) * 200;
+        pos[i*3+1] = Math.random() * 60;
+        pos[i*3+2] = (Math.random() - 0.5) * 200;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0xaaccff, size: 0.5,
+        transparent: true, opacity: 0.6
+      });
+      const rain = new THREE.Points(geo, mat);
+      game.scene.add(rain);
+      game.weather.rainParticles = rain;
+    }
+    game.weather.rainParticles.visible = true;
+    gtaLog('🌧 Начался дождь');
+    playThunder();
+  } else {
+    if (game.weather.rainParticles){
+      game.weather.rainParticles.visible = false;
+    }
+    if (type === 'fog') gtaLog('🌫 Густой туман');
+    if (type === 'clear') gtaLog('☀ Небо прояснилось');
+  }
+}
+
+function updateWeather(dt){
+  // Частицы дождя падают
+  if (game.weather.rainParticles && game.weather.rainParticles.visible){
+    const pos = game.weather.rainParticles.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++){
+      let y = pos.getY(i) - 30 * dt;
+      if (y < 0){
+        y = 60;
+        pos.setX(i, game.player.position.x + (Math.random() - 0.5) * 200);
+        pos.setZ(i, game.player.position.z + (Math.random() - 0.5) * 200);
+      }
+      pos.setY(i, y);
+    }
+    pos.needsUpdate = true;
+  }
+
+  // Смена погоды
+  game.weather.timer -= dt;
+  if (game.weather.timer <= 0){
+    game.weather.timer = 30 + Math.random() * 30;
+    const r = Math.random();
+    if (r < 0.5) setWeather('clear');
+    else if (r < 0.8) setWeather('rain');
+    else setWeather('fog');
+  }
+}
+
+// ============ ХУК В doAction — СОН И КЛАДЫ ============
+const _oldDoActionP5 = doAction;
+doAction = function(){
+  // Дом рядом?
+  if (playerHouse){
+    const d = Math.hypot(playerHouse.x - game.player.position.x, playerHouse.z - game.player.position.z);
+    if (d < 6){
+      sleepAtHome();
+      return;
+    }
+  }
+  _oldDoActionP5();
+};
+
+// ============ ПОДСКАЗКИ — ДОБАВЛЯЕМ ДОМ ============
+const _oldNearbyHintsP5 = updateNearbyHints;
+updateNearbyHints = function(){
+  if (drivingCar) return;
+  if (playerHouse){
+    const d = Math.hypot(playerHouse.x - game.player.position.x, playerHouse.z - game.player.position.z);
+    if (d < 6){
+      showHint('🏠 [F] поспать до утра (HP +100)', 200);
+      return;
+    }
+  }
+  _oldNearbyHintsP5();
+};
+
+// ============ ИНИЦИАЛИЗАЦИЯ — ЗАПУСК ВСЕГО ============
+const _oldInitP5 = initGame;
+initGame = function(){
+  _oldInitP5();
+  setTimeout(() => {
+    createHouse();
+    createSkyClouds();
+    setWeather('clear');
+    // Клад сразу
+    setTimeout(spawnTreasure, 3000);
+    gtaLog('🎵 Звуки готовы · 🚔 Патрули ездят · 🏠 Дом на карте');
+  }, 300);
+};
+
+// ============ ГЛАВНЫЙ ЦИКЛ — ФИНАЛЬНЫЙ ============
+const _oldGameLoopP5 = gameLoop;
+gameLoop = function(){
+  if (!game.running || !game.active) return;
+  const dt = Math.min(0.05, game.clock.getDelta());
+
+  updatePlayer(dt);
+  updateNPCs(dt);
+  updateMissions(dt);
+  updateBullets(dt);
+  updatePolice(dt);
+  updatePoliceCars(dt);
+  updateTreasures(dt);
+  updateClouds(dt);
+  updateWeather(dt);
+  updateDayNight(dt);
+  updateCamera(dt);
+  updateNearbyHints();
+  updateHUD();
+  updateWantedDisplay();
+  drawMinimap();
+
+  game.renderer.render(game.scene, game.camera);
+  requestAnimationFrame(gameLoop);
+};
+
+// ============ МИНИ-КАРТА — ДОБАВЛЯЕМ ДОМ И КЛАДЫ ============
+const _oldDrawMinimapP5 = drawMinimap;
+drawMinimap = function(){
+  _oldDrawMinimapP5();
+
+  const c = $('minimap'); if (!c || !game.player) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height;
+  const scale = W / game.worldSize;
+  const cx = W / 2, cy = H / 2;
+  const px = game.player.position.x;
+  const pz = game.player.position.z;
+
+  // Дом (голубой квадрат)
+  if (playerHouse){
+    const dx = (playerHouse.x - px) * scale + cx;
+    const dz = (playerHouse.z - pz) * scale + cy;
+    if (dx >= 0 && dx <= W && dz >= 0 && dz <= H){
+      ctx.fillStyle = '#44aaff';
+      ctx.fillRect(dx - 4, dz - 4, 8, 8);
+    }
+  }
+
+  // Клады (золотые ромбы)
+  if (game.treasures){
+    game.treasures.forEach(t => {
+      const dx = (t.x - px) * scale + cx;
+      const dz = (t.z - pz) * scale + cy;
+      if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+      ctx.fillStyle = '#ffdd44';
+      ctx.beginPath();
+      ctx.moveTo(dx, dz - 4);
+      ctx.lineTo(dx + 4, dz);
+      ctx.lineTo(dx, dz + 4);
+      ctx.lineTo(dx - 4, dz);
+      ctx.closePath();
+      ctx.fill();
+    });
+  }
+
+  // Патрульные машины (синие кружки с мигалкой)
+  if (game.police.cars){
+    game.police.cars.forEach(car => {
+      const dx = (car.position.x - px) * scale + cx;
+      const dz = (car.position.z - pz) * scale + cy;
+      if (dx < 0 || dx > W || dz < 0 || dz > H) return;
+      const on = Math.sin(performance.now() / 150) > 0;
+      ctx.fillStyle = on ? '#ff2222' : '#2222ff';
+      ctx.beginPath();
+      ctx.arc(dx, dz, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+};
+
+// ============ ПАУЗА — ДОБАВЛЯЕМ ПОГОДУ ============
+const _oldTogglePause = togglePause;
+togglePause = function(){
+  _oldTogglePause();
+  const menu = $('pauseMenu');
+  if (menu && !menu.classList.contains('hidden')){
+    if (!$('pauseWeather')){
+      const info = document.createElement('div');
+      info.id = 'pauseWeather';
+      info.style.cssText = 'color:#8fa8c8;font-family:monospace;font-size:11px;text-align:center;margin-top:10px;';
+      const h = Math.floor(game.time.hour).toString().padStart(2,'0');
+      const m = Math.floor((game.time.hour % 1) * 60).toString().padStart(2,'0');
+      info.innerHTML = `🕐 Время: ${h}:${m} · 🌤 Погода: ${game.weather.current === 'clear' ? 'ясно' : game.weather.current === 'rain' ? 'дождь' : 'туман'}`;
+      menu.appendChild(info);
+    }
+  }
+};
+
+gtaLog('✅ Часть 5 загружена. Игра готова!');
+</script>
+</body>
+</html>
