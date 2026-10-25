@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌌 God Simulator — Ultimate</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#000; color:#eee; font-family:'Segoe UI',sans-serif; overflow:hidden; }
+  canvas { display:block; }
+  #ui { position:fixed; inset:0; pointer-events:none; display:none; }
+  .panel {
+    position:absolute; background:rgba(10,15,30,0.85);
+    border:1px solid #2a4a7a; border-radius:8px;
+    padding:12px; pointer-events:auto; backdrop-filter:blur(8px);
+    box-shadow:0 4px 24px rgba(0,0,0,0.5); z-index:10;
+  }
+  #stats { top:12px; right:12px; width:260px; }
+  #controls { bottom:12px; left:12px; width:300px; max-height:55vh; overflow-y:auto; }
+  #graphs { bottom:12px; right:12px; width:280px; }
+  #topbar { top:12px; left:12px; display:flex; gap:8px; flex-wrap:wrap; max-width:55vw; z-index:20; }
+  #events { top:70px; left:12px; width:300px; max-height:40vh; overflow-y:auto; }
+  h3 { color:#7ab8ff; margin-bottom:8px; font-size:14px; letter-spacing:0.5px; }
+  .stat { display:flex; justify-content:space-between; margin:4px 0; font-size:13px; }
+  .bar { height:6px; background:#1a2a4a; border-radius:3px; margin-top:2px; overflow:hidden; }
+  .bar > div { height:100%; transition:width 0.3s; }
+  button {
+    background:#1a3a6a; color:#fff; border:1px solid #3a6aaa;
+    padding:8px 14px; border-radius:6px; cursor:pointer; font-size:13px;
+    transition:all 0.15s;
+  }
+  button:hover { background:#2a5a9a; }
+  button.danger { background:#6a1a1a; border-color:#aa3a3a; }
+  button.danger:hover { background:#9a2a2a; }
+  button.active { background:#2a6a2a; border-color:#4aaa4a; box-shadow:0 0 10px rgba(74,255,74,0.4); }
+  label { display:block; margin:8px 0 2px; font-size:12px; color:#9ab; }
+  input[type=range] { width:100%; accent-color:#4a9eff; }
+  select, input[type=text] { width:100%; background:#0a1525; color:#eee;
+    border:1px solid #2a4a7a; border-radius:4px; padding:5px; font-size:13px; }
+  input[type=color] { width:100%; height:32px; background:#0a1525; border:1px solid #2a4a7a; border-radius:4px; }
+  #menu {
+    position:fixed; inset:0; background:radial-gradient(ellipse at center,#0a1530,#000);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    z-index:100; pointer-events:auto;
+  }
+  #menu h1 { font-size:52px; margin-bottom:12px;
+    background:linear-gradient(90deg,#4a9eff,#a06aff,#ff4a9e);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  #menu p { color:#88a; margin-bottom:32px; font-size:15px; }
+  #menu button { margin:6px; padding:14px 36px; font-size:16px; }
+  #texStatus { position:absolute; bottom:16px; left:50%; transform:translateX(-50%);
+    font-size:12px; color:#5a7a9a; }
+  .hint { font-size:10px; color:#668; margin-top:4px; }
+  .evt { font-size:12px; padding:4px 0; border-bottom:1px solid #1a2a4a; }
+  .evt.war { color:#ff6a6a; }
+  .evt.disaster { color:#ffaa4a; }
+  .evt.discovery { color:#6aff9a; }
+  .evt.social { color:#9acaff; }
+  .evt.time { color:#666; font-size:10px; }
+  #controls::-webkit-scrollbar, #events::-webkit-scrollbar { width:6px; }
+  #controls::-webkit-scrollbar-thumb, #events::-webkit-scrollbar-thumb { background:#2a4a7a; border-radius:3px; }
+  .keyhint { font-size:11px; color:#7ab8ff; margin-top:6px; text-align:center; }
+  
+  /* God Mode Panel */
+  #godTools {
+    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+    display:none; pointer-events:auto; z-index:20; max-width:520px;
+  }
+  #godTools.active { display:block; }
+  .weapon-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-top:8px; }
+  .weapon-grid button { padding:8px 4px; font-size:10px; text-align:center; line-height:1.3; }
+  .weapon-grid button.selected { background:#2a6a9a; border-color:#4a9aff; box-shadow: 0 0 10px rgba(74,154,255,0.6); }
+  .god-cursor-hint { font-size:11px; color:#7ab8ff; text-align:center; margin-top:8px; }
+
+  /* Citizen Editor & Sound */
+  #citizenEditor { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:520px; z-index:50; }
+  #soundPanel { top:12px; right:280px; width:220px; display:none; }
+  #soundPanel.active { display:block; }
+  .sound-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+  .sound-row span { font-size:11px; color:#9ab; min-width:52px; }
+  .sound-mode { display:flex; gap:4px; margin-top:8px; }
+  .sound-mode button { flex:1; padding:4px 2px; font-size:10px; }
+  .sound-mode button.active { background:#2a6a2a; border-color:#4aaa4a; }
+
+  .toast {
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    background:rgba(20,30,60,0.95); border:1px solid #4a7abf;
+    padding:10px 20px; border-radius:6px; font-size:14px;
+    pointer-events:none; opacity:0; transition:opacity 0.3s; z-index:200;
+  }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <h1>🌌 GOD SIMULATOR</h1>
+  <p>Создай вселенную. Управляй жизнью. Или уничтожь её.</p>
+  <button onclick="startGame()">▶ Создать вселенную</button>
+  <button onclick="quickStart()">⚡ Быстрый старт</button>
+  <button onclick="loadGame()">💾 Загрузить вселенную</button>
+  <div id="texStatus">Загрузка текстур NASA...</div>
+</div>
+
+<div id="ui">
+  <div class="panel" id="topbar">
+    <button onclick="openCitizenEditor()">👽 Жители</button>
+    <button onclick="toggleSoundPanel()">🔊 Звук</button>
+    <button onclick="togglePause()" id="pauseBtn">⏸ Пауза</button>
+    <button onclick="cameraMode('orbit')" id="btnOrbit">🪐 Орбита</button>
+    <button onclick="cameraMode('surface')" id="btnSurface">🏔 Поверхность</button>
+    <button onclick="cameraMode('space')" id="btnSpace">🚀 Космос</button>
+    <button onclick="cameraMode('fly')" id="btnFly">🛸 Полёт (WASD)</button>
+    <button onclick="toggleGodMode()" id="btnGod" class="danger">⚡ God Mode</button>
+    <button onclick="saveGame()">💾 Сохранить</button>
+    <button class="danger" onclick="destroyPlanet()">💥 Уничтожить</button>
+  </div>
+
+  <div class="panel" id="events">
+    <h3>📰 СОБЫТИЯ</h3>
+    <div id="eventLog"></div>
+  </div>
+
+  <div class="panel" id="stats">
+    <h3>📊 ПЛАНЕТА</h3>
+    <div class="stat"><span>Название</span><span id="pName">—</span></div>
+    <div class="stat"><span>Жители</span><span id="pPop">0</span></div>
+    <div class="stat"><span>Возраст</span><span id="pAge">0 лет</span></div>
+    <div class="stat"><span>Настроение</span><span id="pMood">50%</span></div>
+    <div class="bar"><div id="moodBar" style="width:50%;background:#4af"></div></div>
+    <div class="stat" style="margin-top:6px"><span>Технологии</span><span id="pTech">0%</span></div>
+    <div class="bar"><div id="techBar" style="width:0%;background:#4f4"></div></div>
+    <div class="stat" style="margin-top:6px"><span>Жизнь</span><span id="pLife">0%</span></div>
+    <div class="bar"><div id="lifeBar" style="width:0%;background:#fa4"></div></div>
+    <div class="stat" style="margin-top:6px"><span>Эра</span><span id="pEra">—</span></div>
+    <div class="stat"><span>Статус</span><span id="pStatus">—</span></div>
+    <div class="stat"><span>Космос</span><span id="pSpace">—</span></div>
+  </div>
+
+  <div class="panel" id="graphs">
+    <h3>📈 ДИНАМИКА</h3>
+    <canvas id="graph" width="256" height="140"></canvas>
+  </div>
+
+  <div class="panel" id="controls">
+    <h3>⚙ РЕДАКТОР</h3>
+    <label>Название</label>
+    <input type="text" id="inName" value="Новый мир">
+    <label>Тип планеты</label>
+    <select id="inType">
+      <option value="earth">🌍 Землеподобная</option>
+      <option value="mars">🔴 Марс</option>
+      <option value="venus">🟡 Венера</option>
+      <option value="saturn">🪐 Сатурн</option>
+      <option value="ice">❄️ Ледяная</option>
+      <option value="gas">🟠 Газовый гигант</option>
+      <option value="lava">🌋 Лавовая</option>
+      <option value="ocean">🌊 Океаническая</option>
+    </select>
+    <label>Атмосфера: <span id="atmVal">1.0</span></label>
+    <input type="range" id="inAtm" min="0" max="2" step="0.1" value="1">
+    <label>Размер: <span id="sizeVal">1.0</span>×</label>
+    <input type="range" id="inSize" min="0.5" max="2" step="0.1" value="1">
+    <label>Плодородие: <span id="fertVal">0.5</span></label>
+    <input type="range" id="inFert" min="0" max="1" step="0.05" value="0.5">
+    <label>Культура</label>
+    <select id="inCulture">
+      <option value="warriors">⚔️ Воины</option>
+      <option value="scientists" selected>🔬 Учёные</option>
+      <option value="artists">🎨 Художники</option>
+      <option value="traders">💰 Торговцы</option>
+      <option value="mystics">🔮 Мистики</option>
+    </select>
+    <label>Традиция</label>
+    <select id="inTradition">
+      <option value="peace">☮️ Миролюбие</option>
+      <option value="expansion" selected>🚀 Экспансия</option>
+      <option value="isolation">🚪 Изоляция</option>
+      <option value="ritual">🕯 Ритуалы</option>
+    </select>
+    <button onclick="applyEdits()" style="width:100%;margin-top:12px">✓ Применить</button>
+    <div class="keyhint">Полёт: WASD + QE + Мышь</div>
+  </div>
+</div>
+
+<div class="panel" id="godTools">
+  <h3>⚡ GOD MODE — выбери оружие</h3>
+  <div class="weapon-grid">
+    <button data-weapon="meteor" class="selected">🌠<br>Метеорит</button>
+    <button data-weapon="laser">⚡<br>Лазер</button>
+    <button data-weapon="nuke">💣<br>Ядерка</button>
+    <button data-weapon="blackhole">🕳<br>Дыра</button>
+    <button data-weapon="volcano">🌋<br>Вулкан</button>
+    <button data-weapon="ice">❄️<br>Ледник</button>
+    <button data-weapon="rain">🌧<br>Ливень</button>
+    <button data-weapon="bless">✨<br>Благо</button>
+  </div>
+  <div class="god-cursor-hint">Кликни по планете — эффект в этой точке</div>
+</div>
+
+<div class="panel" id="citizenEditor" style="display:none;">
+  <h3>👽 РЕДАКТОР ЖИТЕЛЯ</h3>
+  <div style="display:flex; gap:16px;">
+    <div>
+      <canvas id="citizenPreview" width="220" height="300" style="background:#0a1525; border:1px solid #2a4a7a; border-radius:6px;"></canvas>
+      <div class="hint" style="text-align:center; margin-top:4px;">Превью (вращается)</div>
+    </div>
+    <div style="flex:1;">
+      <label>Рост: <span id="vHeight">1.0</span></label>
+      <input type="range" id="aHeight" min="0.6" max="1.4" step="0.05" value="1.0">
+      <label>Телосложение: <span id="vBuild">1.0</span></label>
+      <input type="range" id="aBuild" min="0.6" max="1.4" step="0.05" value="1.0">
+      <label>Форма головы: <span id="vHead">1.0</span></label>
+      <input type="range" id="aHead" min="0.8" max="1.3" step="0.05" value="1.0">
+      <label>Цвет кожи</label>
+      <input type="color" id="aSkin" value="#e0b088">
+      <label>Цвет глаз</label>
+      <input type="color" id="aEye" value="#2244aa">
+      <label>Цвет одежды</label>
+      <input type="color" id="aCloth" value="#dddddd">
+      <label>Разнообразие: <span id="vVar">0.5</span></label>
+      <input type="range" id="aVar" min="0" max="1" step="0.05" value="0.5">
+      <button onclick="applyAppearance()" style="width:100%; margin-top:10px;">✓ Применить ко всем</button>
+      <button onclick="closeCitizenEditor()" style="width:100%; margin-top:6px;">✕ Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="soundPanel">
+  <h3>🔊 ЗВУК</h3>
+  <div class="sound-row"><span>Эмбиент</span><input type="range" id="volAmbient" min="0" max="100" value="40"></div>
+  <div class="sound-row"><span>Эффекты</span><input type="range" id="volEffects" min="0" max="100" value="70"></div>
+  <div class="sound-row"><span>Мастер</span><input type="range" id="volMaster" min="0" max="100" value="80"></div>
+  <div class="sound-mode">
+    <button data-mode="full" class="active">Полный</button>
+    <button data-mode="ambient">Эмбиент</button>
+    <button data-mode="effects">Эффекты</button>
+    <button data-mode="off">Выкл</button>
+  </div>
+  <div class="hint" style="text-align:center; margin-top:8px;">Кликните для активации</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// 1. СОСТОЯНИЕ И КОНФИГ
+// ============================================================
+const state = {
+  paused: false, time: 0,
+  planet: {
+    name: "Новый мир", type: "earth", atmosphere: 1.0, size: 1.0, fertility: 0.5,
+    culture: "scientists", tradition: "expansion", population: 0, mood: 50,
+    tech: 0, life: 0, era: "Безжизненная", status: "Стабильна", destroyed: false, canSpace: false
+  },
+  appearance: {
+    height: 1.0, build: 1.0, skinColor: '#e0b088', eyeColor: '#2244aa', headShape: 1.0, clothColor: '#dddddd', variation: 0.5
+  },
+  history: { pop: [], mood: [], tech: [], life: [] },
+  maxHistory: 120, events: []
+};
+
+const texturePaths = {
+  earth: 'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg',
+  mars:  'https://www.solarsystemscope.com/textures/download/2k_mars.jpg',
+  venus: 'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg',
+  saturn:'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg',
+  ice:   '', gas: '', lava: '', ocean: ''
+};
+
+const planetDestruction = {
+  earth:  { craterColor: 0x1a0a00, explosionColor: 0xffaa44, sparkColor: 0x44ff88, hasRings: false },
+  mars:   { craterColor: 0x3a0a00, explosionColor: 0xff6622, sparkColor: 0xff9944, hasRings: false },
+  ice:    { craterColor: 0x004466, explosionColor: 0xaaddff, sparkColor: 0xffffff, hasRings: false },
+  gas:    { craterColor: 0x553322, explosionColor: 0xffcc66, sparkColor: 0xffddaa, hasRings: false, isGas: true },
+  lava:   { craterColor: 0x000000, explosionColor: 0xff4400, sparkColor: 0xffaa00, hasRings: false },
+  ocean:  { craterColor: 0x001133, explosionColor: 0x66aaff, sparkColor: 0xaaddff, hasRings: false },
+  venus:  { craterColor: 0x3a1a00, explosionColor: 0xffcc44, sparkColor: 0xffee88, hasRings: false, isToxic: true },
+  saturn: { craterColor: 0x443322, explosionColor: 0xddcc88, sparkColor: 0xffeeaa, hasRings: true, ringColor: 0xc4a878 }
+};
+function getDestructionConfig(type) { return planetDestruction[type] || planetDestruction.earth; }
+
+const cultureAppearance = {
+  warriors:  { clothColor: 0x8a1a1a, build: 1.2, height: 1.05, headShape: 0.95 },
+  scientists:{ clothColor: 0xdddddd, build: 0.9, height: 1.0,  headShape: 1.15 },
+  artists:   { clothColor: 0x9a4ad0, build: 1.0, height: 1.0,  headShape: 1.0 },
+  traders:   { clothColor: 0xd0a020, build: 1.0, height: 0.95, headShape: 1.0 },
+  mystics:   { clothColor: 0x1a4a8a, build: 0.85,height: 1.1,  headShape: 1.05 }
+};
+
+// ============================================================
+// 2. ЗВУК (Web Audio API)
+// ============================================================
+const AudioEngine = {
+  ctx: null, master: null, ambientGain: null, effectsGain: null, reverb: null,
+  layers: {}, mode: 'off', started: false, currentChord: 0, noteTimers: [],
+  pentatonic: [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33, 659.25, 783.99],
+  chords: [
+    { notes: [220, 261.63, 329.63] }, { notes: [174.61, 220, 261.63] },
+    { notes: [261.63, 329.63, 392] }, { notes: [196, 246.94, 293.66] }
+  ],
+
+  init() {
+    if (this.started) return;
+    try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
+    this.started = true;
+    this.master = this.ctx.createGain(); this.master.gain.value = 0.8; this.master.connect(this.ctx.destination);
+    this.ambientGain = this.ctx.createGain(); this.ambientGain.gain.value = 0.4; this.ambientGain.connect(this.master);
+    this.effectsGain = this.ctx.createGain(); this.effectsGain.gain.value = 0.7; this.effectsGain.connect(this.master);
+
+    const rate = this.ctx.sampleRate; const len = rate * 2.5;
+    const impulse = this.ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = impulse.getChannelData(ch);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    }
+    this.reverb = this.ctx.createConvolver(); this.reverb.buffer = impulse; this.reverb.connect(this.ambientGain);
+
+    this.buildDrone(); this.buildWind(); this.buildPad();
+    setTimeout(() => this.bell(), 3000);
+    this.setMode(this.mode);
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  },
+
+  buildDrone() {
+    const o1 = this.ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 55;
+    const o2 = this.ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = 55.3;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 180;
+    const g = this.ctx.createGain(); g.gain.value = 0.18;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.05;
+    const lg = this.ctx.createGain(); lg.gain.value = 0.06;
+    lfo.connect(lg).connect(g.gain); lfo.start();
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(this.ambientGain); g.connect(this.reverb);
+    o1.start(); o2.start();
+  },
+
+  buildWind() {
+    const rate = this.ctx.sampleRate; const buf = this.ctx.createBuffer(1, rate * 4, rate);
+    const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400; f.Q.value = 0.7;
+    const g = this.ctx.createGain(); g.gain.value = 0.04;
+    const lfo = this.ctx.createOscillator(); lfo.frequency.value = 0.08;
+    const lg = this.ctx.createGain(); lg.gain.value = 150;
+    lfo.connect(lg).connect(f.frequency); lfo.start();
+    src.connect(f).connect(g).connect(this.ambientGain); g.connect(this.reverb);
+    src.start();
+  },
+
+  buildPad() {
+    const g = this.ctx.createGain(); g.gain.value = 0; g.connect(this.ambientGain); g.connect(this.reverb);
+    const oscs = [];
+    for (let i = 0; i < 3; i++) {
+      const o = this.ctx.createOscillator(); o.type = 'sine'; o.frequency.value = this.chords[0].notes[i];
+      o.detune.value = (i - 1) * 6; o.connect(g); o.start(); oscs.push(o);
+    }
+    g.gain.setValueAtTime(0, this.ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.05, this.ctx.currentTime + 8);
+    setInterval(() => {
+      this.currentChord = (this.currentChord + 1) % this.chords.length;
+      const chord = this.chords[this.currentChord];
+      oscs.forEach((o, i) => {
+        const now = this.ctx.currentTime;
+        o.frequency.cancelScheduledValues(now);
+        o.frequency.setValueAtTime(o.frequency.value, now);
+        o.frequency.linearRampToValueAtTime(chord.notes[i], now + 4);
+      });
+    }, 20000);
+  },
+
+  bell() {
+    if (this.ctx && this.ctx.state === 'running' && this.mode !== 'off' && this.mode !== 'effects') {
+      const now = this.ctx.currentTime;
+      const freq = this.pentatonic[Math.floor(Math.random() * this.pentatonic.length)];
+      const osc = this.ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
+      const osc2 = this.ctx.createOscillator(); osc2.type = 'sine'; osc2.frequency.value = freq * 2.01;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.08, now + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 4);
+      osc.connect(g); osc2.connect(g); g.connect(this.reverb); g.connect(this.ambientGain);
+      osc.start(now); osc2.start(now); osc.stop(now + 4.5); osc2.stop(now + 4.5);
+    }
+    setTimeout(() => this.bell(), 3000 + Math.random() * 6000);
+  },
+
+  boom(i = 1) {
+    if (!this.started || this.mode === 'off' || this.mode === 'ambient') return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator(); osc.type = 'sine';
+    osc.frequency.setValueAtTime(80 * i, now); osc.frequency.exponentialRampToValueAtTime(20, now + 0.6);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.5 * i, now); g.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+    osc.connect(g).connect(this.effectsGain); osc.start(now); osc.stop(now + 1.3);
+  },
+
+  sparkle() {
+    if (!this.started || this.mode === 'off' || this.mode === 'ambient') return;
+    const now = this.ctx.currentTime;
+    for (let i = 0; i < 3; i++) {
+      const f = this.pentatonic[4 + Math.floor(Math.random() * 5)];
+      const o = this.ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f * (1 + i * 0.5);
+      const g = this.ctx.createGain(); const t = now + i * 0.08;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+      o.connect(g).connect(this.effectsGain); o.connect(this.reverb); o.start(t); o.stop(t + 1.6);
+    }
+  },
+
+  destroy() {
+    if (!this.started) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(30, now + 4);
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(0.3, now); g.gain.exponentialRampToValueAtTime(0.001, now + 5);
+    const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400;
+    osc.connect(f).connect(g).connect(this.master); osc.start(now); osc.stop(now + 5);
+  },
+
+  setMode(m) {
+    this.mode = m; if (!this.started) return;
+    const a = (m === 'full' || m === 'ambient') ? 0.4 : 0;
+    const e = (m === 'full' || m === 'effects') ? 0.7 : 0;
+    this.ambientGain.gain.linearRampToValueAtTime(a, this.ctx.currentTime + 0.5);
+    this.effectsGain.gain.linearRampToValueAtTime(e, this.ctx.currentTime + 0.3);
+  }
+};
+
+// ============================================================
+// 3. THREE.JS И ГРАФИКА
+// ============================================================
+let scene, camera, renderer, planetMesh, atmosphereMesh, starField, particles;
+let saturnRing = null, citizensGroup = null, aimPreview = null, cracksMesh = null;
+let camMode = 'orbit', camAngle = 0, totalDamage = 0;
+const textureCache = {};
+const textureLoader = new THREE.TextureLoader();
+
+function preloadTextures() {
+  const status = document.getElementById('texStatus');
+  let loaded = 0; const total = Object.values(texturePaths).filter(p => p).length;
+  if (total === 0) { status.textContent = '✓ Процедурная графика'; return; }
+
+  Object.entries(texturePaths).forEach(([type, path]) => {
+    if (!path) return;
+    textureLoader.load(path, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace; textureCache[type] = tex; loaded++;
+      status.textContent = `Загрузка текстур NASA... ${loaded}/${total}`;
+      if (loaded === total) status.textContent = `✓ Загружено текстур NASA: ${loaded}`;
+    }, undefined, () => {
+      loaded++; if (loaded === total) status.textContent = '⚠ Текстуры не найдены. Процедурные.';
+    });
+  });
+}
+
+function generateProceduralTexture(type, fert) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  const palettes = {
+    earth: ['#1a4a8a','#2a6a3a','#7a9a4a','#c9b98a'], mars: ['#7a3a1a','#a05a2a','#c07840','#e0a060'],
+    ice: ['#6a8ab0','#9ab5d0','#c0d8e8','#ffffff'], gas: ['#a07040','#c09060','#e0b080','#f0d0a0'],
+    lava: ['#1a0000','#4a0a00','#8a1a00','#ff4400'], ocean: ['#0a2a5a','#1a4a8a','#3a7ab0','#6ab0d0'],
+    venus: ['#8a6a1a','#b08a2a','#d0aa4a','#ffdd88'], saturn: ['#6a5a3a','#8a7a5a','#b0a070','#d0c090']
+  };
+  const pal = palettes[type] || palettes.earth;
+  for (let y = 0; y < c.height; y++) {
+    const grad = ctx.createLinearGradient(0, y, c.width, y);
+    grad.addColorStop(0, pal[0]); grad.addColorStop(0.5, pal[1]); grad.addColorStop(1, pal[0]);
+    ctx.fillStyle = grad; ctx.fillRect(0, y, c.width, 1);
+  }
+  const blobs = 40 + Math.floor(fert * 80);
+  for (let i = 0; i < blobs; i++) {
+    const x = Math.random() * c.width, y = Math.random() * c.height, r = 20 + Math.random() * 120;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, pal[2] + 'cc'); g.addColorStop(1, pal[2] + '00');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+function getPlanetTexture(type, fert) {
+  return textureCache[type] || generateProceduralTexture(type, fert);
+}
+
+function initThree() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 5000);
+  camera.position.set(0, 2, 6);
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  document.body.appendChild(renderer.domElement);
+
+  const starGeo = new THREE.BufferGeometry(); const starVerts = [];
+  for (let i = 0; i < 3000; i++) {
+    const r = 200 + Math.random() * 800, th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    starVerts.push(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th), r*Math.cos(ph));
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+  starField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:1.2 }));
+  scene.add(starField);
+
+  scene.add(new THREE.AmbientLight(0x4466aa, 0.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(5, 3, 5); scene.add(sun);
+
+  buildPlanet(); addEventListener('resize', onResize); setupFlyControls();
+  animate();
+}
+
+function buildPlanet() {
+  clearCracks();
+  if (planetMesh) scene.remove(planetMesh);
+  if (atmosphereMesh) scene.remove(atmosphereMesh);
+  if (saturnRing) { planetMesh.remove(saturnRing); saturnRing = null; }
+
+  const p = state.planet; const r = 2 * p.size;
+  const tex = getPlanetTexture(p.type, p.fertility);
+  
+  planetMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(r, 64, 64),
+    new THREE.MeshStandardMaterial({
+      map: tex, roughness: 0.85, metalness: 0.05,
+      emissive: p.type === 'lava' ? new THREE.Color(0x661100) : (p.type === 'saturn' ? new THREE.Color(0x332211) : new THREE.Color(0x000000)),
+      emissiveIntensity: p.type === 'lava' ? 0.8 : (p.type === 'saturn' ? 0.3 : 0)
+    })
+  );
+  scene.add(planetMesh);
+  initCitizensLayer();
+  buildSaturnRing();
+
+  if (p.atmosphere > 0.1) {
+    const atmoColors = { earth: 0x4488ff, mars: 0xff8855, ice: 0xaaddff, gas: 0xffcc88, lava: 0xff4400, ocean: 0x44aaff, venus: 0xffdd88, saturn: 0xffcc88 };
+    atmosphereMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(r * 1.08, 64, 64),
+      new THREE.MeshBasicMaterial({ color: atmoColors[p.type] || 0x4488ff, transparent: true, opacity: 0.18 * p.atmosphere, side: THREE.BackSide })
+    );
+    scene.add(atmosphereMesh);
+  }
+  camAngle = 0;
+}
+
+function buildSaturnRing() {
+  const p = state.planet;
+  if (p.type !== 'saturn') return;
+  const innerR = 2 * p.size * 1.4, outerR = 2 * p.size * 2.2;
+  const ringGeo = new THREE.RingGeometry(innerR, outerR, 128, 4);
+  const pos = ringGeo.attributes.position, uv = ringGeo.attributes.uv, v3 = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v3.fromBufferAttribute(pos, i);
+    uv.setXY(i, (v3.length() - innerR) / (outerR - innerR), 0.5);
+  }
+  const c = document.createElement('canvas'); c.width = 512; c.height = 16;
+  const ctx = c.getContext('2d');
+  for (let x = 0; x < 512; x++) {
+    const t = x / 512;
+    const band = 0.6 + Math.sin(t * 47) * 0.15 + Math.sin(t * 113) * 0.1 + Math.random() * 0.1;
+    const alpha = 0.5 + Math.sin(t * 7) * 0.3;
+    ctx.fillStyle = `rgba(${Math.floor(200*band)},${Math.floor(170*band)},${Math.floor(130*band)},${alpha})`;
+    ctx.fillRect(x, 0, 1, 16);
+  }
+  const ringTex = new THREE.CanvasTexture(c);
+  saturnRing = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ map: ringTex, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+  saturnRing.rotation.x = Math.PI * 0.42;
+  planetMesh.add(saturnRing);
+  saturnRing.userData.craterHoles = [];
+}
+
+// ============================================================
+// 4. ЖИТЕЛИ
+// ============================================================
+function createCitizen(app, seed = 0) {
+  const rng = (n) => { const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const v = app.variation || 0;
+  const s = app.height * (1 + (rng(1)-0.5) * v * 0.4), w = app.build * (1 + (rng(2)-0.5) * v * 0.4);
+  const headScale = app.headShape * (1 + (rng(3)-0.5) * v * 0.3);
+  const skin = new THREE.Color(app.skinColor); skin.offsetHSL(0, (rng(4)-0.5) * v * 0.15, (rng(5)-0.5) * v * 0.2);
+  const cloth = new THREE.Color(app.clothColor); cloth.offsetHSL((rng(6)-0.5) * v * 0.1, 0, (rng(7)-0.5) * v * 0.15);
+
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.85 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: cloth, roughness: 0.9 });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(app.eyeColor) });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.35*w, 0.5*s, 0.22*w), clothMat); torso.position.y = 0.55*s; group.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.14*s, 16, 16), skinMat); head.position.y = 0.92*s; head.scale.y = headScale; group.add(head);
+  const eyeGeo = new THREE.SphereGeometry(0.018*s, 8, 8);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.05*s, 0.94*s, 0.12*s); group.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.05*s; group.add(eyeR);
+
+  const armGeo = new THREE.BoxGeometry(0.08*w, 0.4*s, 0.08*w); armGeo.translate(0, -0.2*s, 0);
+  const armL = new THREE.Mesh(armGeo, skinMat); armL.position.set(-0.22*w, 0.75*s, 0); group.add(armL);
+  const armR = new THREE.Mesh(armGeo, skinMat); armR.position.set(0.22*w, 0.75*s, 0); group.add(armR);
+
+  const legGeo = new THREE.BoxGeometry(0.1*w, 0.4*s, 0.1*w); legGeo.translate(0, -0.2*s, 0);
+  const legL = new THREE.Mesh(legGeo, clothMat); legL.position.set(-0.09*w, 0.4*s, 0); group.add(legL);
+  const legR = new THREE.Mesh(legGeo, clothMat); legR.position.set(0.09*w, 0.4*s, 0); group.add(legR);
+
+  group.userData.armL = armL; group.userData.armR = armR; group.userData.legL = legL; group.userData.legR = legR;
+  group.userData.phase = Math.random() * Math.PI * 2; group.userData.speed = 1 + Math.random() * 0.5;
+  return group;
+}
+
+function initCitizensLayer() { if (citizensGroup && planetMesh) planetMesh.remove(citizensGroup); citizensGroup = new THREE.Group(); planetMesh.add(citizensGroup); }
+
+function respawnCitizens() {
+  if (!citizensGroup || !planetMesh) return;
+  while (citizensGroup.children.length) {
+    const c = citizensGroup.children.pop();
+    c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose?.(); });
+  }
+  spawnCitizensOnPlanet();
+}
+
+function spawnCitizensOnPlanet() {
+  if (!citizensGroup || !planetMesh) return;
+  const p = state.planet, planetR = 2 * p.size;
+  const count = Math.min(150, Math.floor(p.population / 30) + (p.population > 0 ? 1 : 0));
+  for (let i = 0; i < count; i++) {
+    const c = createCitizen(state.appearance, i * 7.31 + 1);
+    const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    c.position.set(planetR * Math.sin(ph) * Math.cos(th), planetR * Math.sin(ph) * Math.sin(th), planetR * Math.cos(ph));
+    c.lookAt(0, 0, 0); c.rotateX(Math.PI); c.scale.setScalar(0.08 * p.size);
+    citizensGroup.add(c);
+  }
+}
+
+function animateCitizens(dt) {
+  if (!citizensGroup) return;
+  const t = performance.now() / 1000;
+  citizensGroup.children.forEach(c => {
+    const ud = c.userData; if (!ud.armL) return;
+    const swing = Math.sin(t * 4 * ud.speed + ud.phase) * 0.4;
+    ud.armL.rotation.x = swing; ud.armR.rotation.x = -swing;
+    ud.legL.rotation.x = -swing; ud.legR.rotation.x = swing;
+  });
+}
+
+// ============================================================
+// 5. GOD MODE (РАЗРУШЕНИЕ)
+// ============================================================
+const godState = { active: false, weapon: 'meteor' };
+const raycaster = new THREE.Raycaster();
+const mouseNDC = new THREE.Vector2();
+const activeEffects = [];
+
+function toggleGodMode() {
+  godState.active = !godState.active;
+  document.getElementById('btnGod').classList.toggle('active', godState.active);
+  document.getElementById('godTools').classList.toggle('active', godState.active);
+  document.body.style.cursor = godState.active ? 'crosshair' : '';
+  if (godState.active) showToast("⚡ God Mode — кликай по планете"); else hideAimPreview();
+}
+
+document.querySelectorAll('#godTools .weapon-grid button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#godTools .weapon-grid button').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected'); godState.weapon = btn.dataset.weapon;
+  });
+});
+
+addEventListener('mousemove', (e) => {
+  if (!godState.active || !planetMesh || state.planet.destroyed) { hideAimPreview(); return; }
+  mouseNDC.x = (e.clientX / innerWidth) * 2 - 1; mouseNDC.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObject(planetMesh);
+  if (hits.length > 0) showAimPreview(hits[0].point); else hideAimPreview();
+});
+
+addEventListener('click', (e) => {
+  if (!godState.active || !planetMesh || state.planet.destroyed) return;
+  if (e.target.closest('.panel') || e.target.closest('button')) return;
+  mouseNDC.x = (e.clientX / innerWidth) * 2 - 1; mouseNDC.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObject(planetMesh);
+  if (hits.length === 0) return;
+  spawnCatastrophe(planetMesh.worldToLocal(hits[0].point.clone()), godState.weapon);
+});
+
+function showAimPreview(worldPoint) {
+  if (!aimPreview) {
+    aimPreview = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.13, 24), new THREE.MeshBasicMaterial({ color: 0xff4a4a, side: THREE.DoubleSide, transparent: true, opacity: 0.9, depthTest: false }));
+    aimPreview.renderOrder = 999; scene.add(aimPreview);
+  }
+  aimPreview.visible = true;
+  aimPreview.position.copy(worldPoint.clone().normalize().multiplyScalar(2 * state.planet.size * 1.02));
+  aimPreview.lookAt(0, 0, 0);
+}
+function hideAimPreview() { if (aimPreview) aimPreview.visible = false; }
+
+function spawnCatastrophe(localPoint, type) {
+  const dir = localPoint.clone().normalize();
+  if (state.planet.type === 'saturn' && saturnRing) {
+    const worldPoint = planetMesh.localToWorld(localPoint.clone());
+    const ringWorldPos = planetMesh.localToWorld(saturnRing.position.clone());
+    const distToPlane = Math.abs(worldPoint.clone().sub(ringWorldPos).dot(new THREE.Vector3(0, 1, 0).applyQuaternion(saturnRing.quaternion)));
+    if (distToPlane < 0.3 * state.planet.size) { breakSaturnRing(worldPoint, type); return; }
+  }
+  ({ meteor: spawnMeteor, laser: spawnLaser, nuke: spawnNuke, blackhole: spawnBlackHole, volcano: spawnVolcano, ice: spawnIce, rain: spawnRain, bless: spawnBless })[type](localPoint, dir);
+}
+
+function breakSaturnRing(worldPoint, type) {
+  const localPoint = planetMesh.worldToLocal(worldPoint.clone());
+  createExplosion(localPoint, getDestructionConfig('saturn').explosionColor, 1.2);
+  AudioEngine.boom(1);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.3 + Math.random() * 0.2, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+  const ringRadius = localPoint.length(), angle = Math.atan2(localPoint.y, localPoint.x);
+  hole.position.set(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0);
+  saturnRing.add(hole); saturnRing.userData.craterHoles.push(hole);
+  if (saturnRing.userData.craterHoles.length >= 8) destroySaturnRing();
+  else logEvent(`💥 Обломок кольца Сатурна разрушен (${saturnRing.userData.craterHoles.length}/8)`, "disaster");
+}
+
+function destroySaturnRing() {
+  if (!saturnRing) return;
+  for (let i = 0; i < 60; i++) {
+    const angle = (i / 60) * Math.PI * 2, r = 1.4 + Math.random() * 0.8;
+    createExplosion(new THREE.Vector3(Math.cos(angle) * r * state.planet.size, 0, Math.sin(angle) * r * state.planet.size), 0xc4a878, 0.8);
+  }
+  planetMesh.remove(saturnRing); saturnRing = null;
+  logEvent("💥 Кольца Сатурна полностью разрушены!", "disaster"); AudioEngine.boom(2);
+  state.planet.mood = Math.max(0, state.planet.mood - 20);
+}
+
+function makeCrater(localPoint, radius, opacity = 0.85, color = null) {
+  const cfg = getDestructionConfig(state.planet.type);
+  const craterColor = color !== null ? color : cfg.craterColor;
+  const crater = new THREE.Mesh(new THREE.CircleGeometry(radius, 20), new THREE.MeshBasicMaterial({ color: craterColor, transparent: true, opacity, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, side: THREE.DoubleSide }));
+  crater.position.copy(localPoint.clone().normalize().multiplyScalar(1.012));
+  crater.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localPoint.clone().normalize()));
+
+  if (cfg.isToxic) {
+    const glow = new THREE.Mesh(new THREE.RingGeometry(radius * 1.05, radius * 1.4, 20), new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    glow.position.copy(crater.position).multiplyScalar(1.001); glow.quaternion.copy(crater.quaternion); planetMesh.add(glow);
+    let gl = 5; const gt = setInterval(() => { gl -= 0.1; glow.material.opacity = Math.max(0, 0.4 * (gl / 5)); if (gl <= 0) { clearInterval(gt); planetMesh.remove(glow); } }, 100);
+  }
+  if (cfg.isGas) {
+    let sl = 15; const st = setInterval(() => { crater.material.opacity = Math.max(0, opacity * (sl / 15)); sl -= 0.1; if (sl <= 0) { clearInterval(st); planetMesh.remove(crater); } }, 100);
+  }
+  planetMesh.add(crater);
+  return crater;
+}
+
+function spawnMeteor(localPoint, normal) {
+  const meteor = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshStandardMaterial({ color: 0xaa4422, emissive: 0xff4400, emissiveIntensity: 1.5 }));
+  meteor.position.copy(localPoint.clone().add(normal.clone().multiplyScalar(8)));
+  meteor.add(new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending })));
+  planetMesh.add(meteor);
+  activeEffects.push({ type: 'meteor', mesh: meteor, startPos: meteor.position.clone(), endPos: localPoint.clone(), t: 0, duration: 0.9,
+    onDone: () => { createExplosion(localPoint, getDestructionConfig(state.planet.type).explosionColor, 1); makeCrater(localPoint, 0.18 + Math.random() * 0.08, 0.9); applyLocalDamage(0.05); } });
+}
+
+function spawnLaser(localPoint, normal) {
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6, 8), new THREE.MeshBasicMaterial({ color: 0xff2244, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending }));
+  beam.position.copy(localPoint.clone().add(normal.clone().multiplyScalar(3)));
+  beam.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal.clone().negate()));
+  planetMesh.add(beam);
+  activeEffects.push({ type: 'laser', mesh: beam, t: 0, duration: 0.6, update: (e) => { beam.material.opacity = 0.95 * (1 - e.t / e.duration); },
+    onDone: () => { createExplosion(localPoint, 0xff2244, 0.6); makeCrater(localPoint, 0.1, 0.75); applyLocalDamage(0.02); } });
+}
+
+function spawnNuke(localPoint, normal) {
+  createExplosion(localPoint, 0xffffff, 1.6); setTimeout(() => createExplosion(localPoint, 0xffaa44, 2), 80);
+  makeCrater(localPoint, 0.35, 0.95); applyLocalDamage(0.15);
+}
+
+function spawnBlackHole(localPoint, normal) {
+  const hole = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+  hole.position.copy(localPoint.clone().multiplyScalar(1.12));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.38, 32), new THREE.MeshBasicMaterial({ color: 0xaa44ff, side: THREE.DoubleSide, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending }));
+  hole.add(ring); planetMesh.add(hole);
+  activeEffects.push({ type: 'blackhole', mesh: hole, ring, t: 0, duration: 3,
+    update: (e) => { e.mesh.rotation.x += 0.05; e.mesh.rotation.y += 0.08; e.ring.material.opacity = 0.85 * (1 - e.t / e.duration); e.mesh.scale.setScalar(1 + Math.sin(e.t * 5) * 0.1); },
+    onDone: () => { createExplosion(localPoint.clone().multiplyScalar(1.1), 0xaa44ff, 1.2); applyLocalDamage(0.08); } });
+}
+
+function spawnVolcano(localPoint, normal) {
+  const volcano = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.25, 8), new THREE.MeshStandardMaterial({ color: 0x331100, roughness: 1 }));
+  volcano.position.copy(localPoint.clone().add(normal.clone().multiplyScalar(0.1)));
+  volcano.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal));
+  planetMesh.add(volcano);
+  applyLocalDamage(0.06);
+}
+
+function spawnIce(localPoint, normal) {
+  const ice = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16), new THREE.MeshStandardMaterial({ color: 0xaaddff, transparent: true, opacity: 0.85, roughness: 0.2 }));
+  ice.position.copy(localPoint); planetMesh.add(ice);
+  activeEffects.push({ type: 'ice', mesh: ice, t: 0, duration: 1.2,
+    update: (e) => { e.mesh.scale.setScalar(1 + (e.t / e.duration) * 8); },
+    onDone: () => { makeCrater(localPoint, 0.28, 0.7, 0xaaddff); applyLocalDamage(0.01); state.planet.mood = Math.max(0, state.planet.mood - 3); } });
+}
+
+function spawnRain(localPoint, normal) {
+  state.planet.mood = Math.min(100, state.planet.mood + 5); state.planet.fertility = Math.min(1, state.planet.fertility + 0.02);
+  logEvent("🌧 Дождь оросил землю — плодородие выросло", "social");
+}
+
+function spawnBless(localPoint, normal) {
+  const light = new THREE.PointLight(0xffdd66, 2, 3); light.position.copy(localPoint.clone().multiplyScalar(1.2)); planetMesh.add(light);
+  activeEffects.push({ type: 'bless', light, t: 0, duration: 2, update: (e) => { e.light.intensity = 2 * (1 - e.t / e.duration); }, onDone: () => planetMesh.remove(light) });
+  state.planet.mood = Math.min(100, state.planet.mood + 10); state.planet.tech = Math.min(100, state.planet.tech + 1);
+  logEvent("✨ Благословение богов снизошло на этот край", "discovery");
+}
+
+function createExplosion(localPos, color, intensity = 1) {
+  const geo = new THREE.BufferGeometry(); const pos = [], vel = []; const count = Math.floor(80 * intensity);
+  for (let i = 0; i < count; i++) {
+    pos.push(localPos.x, localPos.y, localPos.z);
+    const dir = localPos.clone().normalize(), rand = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
+    const v = dir.multiplyScalar(0.5 + Math.random() * 0.8).add(rand.multiplyScalar(0.5)); vel.push(v.x, v.y, v.z);
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size: 0.08, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+  planetMesh.add(pts);
+  activeEffects.push({ type: 'explosion', mesh: pts, vel, t: 0, duration: 1.2,
+    update: (e) => { const arr = e.mesh.geometry.attributes.position.array; for (let i = 0; i < arr.length; i += 3) { arr[i]+=e.vel[i]*0.016; arr[i+1]+=e.vel[i+1]*0.016; arr[i+2]+=e.vel[i+2]*0.016; } e.mesh.geometry.attributes.position.needsUpdate = true; e.mesh.material.opacity = 1 - (e.t / e.duration); } });
+}
+
+function applyLocalDamage(fraction) {
+  const p = state.planet; const loss = Math.floor(p.population * fraction);
+  p.population = Math.max(0, p.population - loss); p.mood = Math.max(0, p.mood - fraction * 50);
+  totalDamage += fraction;
+  if (totalDamage >= 0.3 && !cracksMesh) { logEvent("🌋 Планета покрывается трещинами", "disaster"); addCrackEffect(); }
+  if (loss > 0) logEvent(`💥 Катастрофа унесла ${loss.toLocaleString()} жизней`, "disaster");
+}
+
+function addCrackEffect() {
+  if (!planetMesh || cracksMesh) return;
+  const p = state.planet, r = 2 * p.size, crackPositions = [];
+  for (let c = 0; c < 12; c++) {
+    const startTheta = Math.random() * Math.PI * 2, startPhi = Math.acos(2 * Math.random() - 1);
+    let x = r * Math.sin(startPhi) * Math.cos(startTheta), y = r * Math.sin(startPhi) * Math.sin(startTheta), z = r * Math.cos(startPhi);
+    const dir = new THREE.Vector3(x, y, z).normalize(), tangent = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).cross(dir).normalize();
+    crackPositions.push(x, y, z);
+    for (let step = 0; step < 8; step++) {
+      const len = 0.15 * p.size; x += tangent.x * len + (Math.random()-0.5)*0.05; y += tangent.y * len + (Math.random()-0.5)*0.05; z += tangent.z * len + (Math.random()-0.5)*0.05;
+      const v = new THREE.Vector3(x, y, z).normalize().multiplyScalar(r * 1.005); crackPositions.push(v.x, v.y, v.z);
+    }
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(crackPositions, 3));
+  cracksMesh = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending }));
+  planetMesh.add(cracksMesh);
+  let pulse = 0; const interval = setInterval(() => { if (!cracksMesh) { clearInterval(interval); return; } pulse += 0.1; cracksMesh.material.opacity = 0.6 + Math.sin(pulse) * 0.3; }, 100);
+}
+
+function clearCracks() { if (cracksMesh) { planetMesh.remove(cracksMesh); cracksMesh = null; } totalDamage = 0; }
+
+function updateEffects(dt) {
+  for (let i = activeEffects.length - 1; i >= 0; i--) {
+    const e = activeEffects[i]; e.t += dt;
+    if (e.update) e.update(e);
+    if (e.type === 'meteor') {
+      const k = Math.min(1, e.t / e.duration);
+      e.mesh.position.lerpVectors(e.startPos, e.endPos, k);
+      if (k >= 1) { e.onDone(); planetMesh.remove(e.mesh); activeEffects.splice(i, 1); }
+    } else if (e.t >= e.duration) {
+      if (e.onDone) e.onDone();
+      if (e.mesh && e.type !== 'bless') planetMesh.remove(e.mesh);
+      activeEffects.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
+// 6. СИМУЛЯЦИЯ И СОБЫТИЯ
+// ============================================================
+let lastTick = 0, lastEventTime = 0;
+function updateSimulation(dt) {
+  const p = state.planet; state.time += dt;
+
+  if (p.life === 0 && p.fertility > 0.3 && p.atmosphere > 0.4) { p.life = 0.5; logEvent("🌱 Зарождение жизни на планете", "discovery"); AudioEngine.sparkle(); }
+  if (p.life > 0) {
+    p.life = Math.min(100, p.life + dt * 0.3 * p.fertility);
+    if (p.life > 10 && p.population === 0) { p.population = 10; logEvent("👥 Появились первые жители", "discovery"); AudioEngine.sparkle(); }
+    if (p.population > 0) {
+      const cultureBonus = { warriors:0.7, scientists:1.0, artists:0.9, traders:1.1, mystics:0.8 }[p.culture];
+      const traditionBonus = { peace:1.1, expansion:1.3, isolation:0.8, ritual:0.9 }[p.tradition];
+      const growth = (p.mood/100) * (1 + p.tech/200) * p.fertility * cultureBonus * traditionBonus;
+      p.population += (p.population * growth * 0.01) * dt;
+      const techSpeed = { warriors:0.6, scientists:1.8, artists:0.8, traders:1.2, mystics:0.5 }[p.culture];
+      p.tech = Math.min(100, p.tech + dt * 0.15 * techSpeed * (p.population/1000 + 0.3));
+      const targetMood = 40 + p.fertility*30 + p.tech*0.2 - (p.population/50000);
+      p.mood += (targetMood - p.mood) * dt * 0.1; p.mood = Math.max(0, Math.min(100, p.mood));
+
+      const prevEra = p.era;
+      if (p.tech < 10) p.era = "Первобытная"; else if (p.tech < 25) p.era = "Аграрная";
+      else if (p.tech < 45) p.era = "Индустриальная"; else if (p.tech < 70) p.era = "Информационная";
+      else if (p.tech < 90) p.era = "Космическая"; else p.era = "Постсингулярная";
+      if (prevEra !== p.era && prevEra !== "Безжизненная") { logEvent(`📜 Новая эра: ${p.era}`, "social"); AudioEngine.click(); }
+
+      if (p.mood < 20) p.status = "Кризис"; else if (p.mood > 80) p.status = "Процветание";
+      else if (p.population > 1000000) p.status = "Перенаселение"; else p.status = "Стабильна";
+      if (p.tech >= 70 && !p.canSpace) { p.canSpace = true; logEvent("🚀 Жители вышли в космос!", "discovery"); AudioEngine.sparkle(); }
+    }
+  }
+
+  if (state.time - lastEventTime > 15 && p.population > 50) { lastEventTime = state.time; triggerRandomEvent(); }
+  if (state.time - lastTick > 0.2) { lastTick = state.time; updateUI(); recordHistory(); drawGraph(); }
+  if (Math.floor(state.time) % 2 === 0 && citizensGroup && citizensGroup.children.length !== Math.min(150, Math.floor(p.population / 30) + (p.population > 0 ? 1 : 0))) respawnCitizens();
+}
+
+const eventTypes = {
+  war: [{ text: "⚔️ Гражданская война унесла 12% населения", effect: p => p.population *= 0.88 }, { text: "⚔️ Военный переворот. Народ в страхе", effect: p => p.mood -= 20 }],
+  disaster: [{ text: "🌋 Извержение вулкана уничтожило города", effect: p => { p.population *= 0.85; p.mood -= 10; } }, { text: "🦠 Пандемия охватила планету", effect: p => p.population *= 0.75 }],
+  discovery: [{ text: "🔬 Научный прорыв ускорил развитие", effect: p => { p.tech = Math.min(100, p.tech + 5); p.mood += 10; } }, { text: "💡 Изобретён новый источник энергии", effect: p => { p.tech += 3; p.mood += 5; } }],
+  social: [{ text: "🎉 Великий праздник объединил народ", effect: p => p.mood += 15 }, { text: "📉 Экономический кризис", effect: p => p.mood -= 15 }]
+};
+
+function triggerRandomEvent() {
+  const r = Math.random(); let cat = r < 0.25 ? 'war' : r < 0.5 ? 'disaster' : r < 0.75 ? 'discovery' : 'social';
+  const evt = eventTypes[cat][Math.floor(Math.random() * eventTypes[cat].length)];
+  evt.effect(state.planet); state.planet.population = Math.max(0, state.planet.population);
+  state.planet.mood = Math.max(0, Math.min(100, state.planet.mood));
+  logEvent(evt.text, cat);
+  if (cat === 'war' || cat === 'disaster') { showToast(evt.text); AudioEngine.boom(1); }
+  else if (cat === 'discovery') AudioEngine.sparkle();
+}
+
+function logEvent(text, type = 'social') {
+  state.events.unshift({ text, type, time: state.time });
+  if (state.events.length > 20) state.events.pop();
+  renderEventLog();
+}
+
+function renderEventLog() {
+  const el = document.getElementById('eventLog');
+  if (el) el.innerHTML = state.events.slice(0, 8).map(e => `<div class="evt ${e.type}">${e.text}<div class="evt time">${Math.floor(e.time * 1000)} лет</div></div>`).join('');
+}
+
+function showToast(text) {
+  const t = document.getElementById('toast'); t.textContent = text; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// 7. UI И КАМЕРА
+// ============================================================
+function updateUI() {
+  const p = state.planet;
+  document.getElementById('pName').textContent = p.name;
+  document.getElementById('pPop').textContent = Math.floor(p.population).toLocaleString();
+  document.getElementById('pAge').textContent = Math.floor(state.time * 1000).toLocaleString() + " лет";
+  document.getElementById('pMood').textContent = Math.floor(p.mood) + "%"; document.getElementById('moodBar').style.width = p.mood + "%";
+  document.getElementById('pTech').textContent = Math.floor(p.tech) + "%"; document.getElementById('techBar').style.width = p.tech + "%";
+  document.getElementById('pLife').textContent = Math.floor(p.life) + "%"; document.getElementById('lifeBar').style.width = p.life + "%";
+  document.getElementById('pEra').textContent = p.era; document.getElementById('pStatus').textContent = p.status;
+  document.getElementById('pSpace').textContent = p.canSpace ? "✓ Достигнут" : "—";
+}
+
+function recordHistory() {
+  const h = state.history;
+  h.pop.push(state.planet.population); h.mood.push(state.planet.mood); h.tech.push(state.planet.tech); h.life.push(state.planet.life);
+  for (const k in h) if (h[k].length > state.maxHistory) h[k].shift();
+}
+
+function drawGraph() {
+  const cv = document.getElementById('graph'), ctx = cv.getContext('2d'), w = cv.width, h = cv.height;
+  ctx.clearRect(0,0,w,h); ctx.strokeStyle = '#1a2a4a'; ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h*i/4); ctx.lineTo(w, h*i/4); ctx.stroke(); }
+  const drawLine = (arr, color, maxVal) => {
+    if (arr.length < 2) return;
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath(); const max = maxVal || Math.max(...arr, 1);
+    arr.forEach((v, i) => { const x = (i / (state.maxHistory - 1)) * w, y = h - (v / max) * h * 0.9 - 5; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke();
+  };
+  drawLine(state.history.life, '#fa4', 100); drawLine(state.history.tech, '#4f4', 100); drawLine(state.history.mood, '#4af', 100);
+  drawLine(state.history.pop, '#f4a', Math.max(...state.history.pop, 1));
+  ctx.font = '10px sans-serif'; ctx.fillStyle = '#fa4'; ctx.fillText('Жизнь', 4, 12); ctx.fillStyle = '#4f4'; ctx.fillText('Тех', 50, 12);
+  ctx.fillStyle = '#4af'; ctx.fillText('Настр', 90, 12); ctx.fillStyle = '#f4a'; ctx.fillText('Поп', 140, 12);
+}
+
+const keys = {}; let yaw = 0, pitch = 0, isPointerLocked = false;
+function setupFlyControls() {
+  addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space' && camMode === 'fly') e.preventDefault(); });
+  addEventListener('keyup', e => { keys[e.code] = false; });
+  const canvas = () => renderer.domElement;
+  document.addEventListener('click', () => { if (camMode === 'fly' && !isPointerLocked && !godState.active) canvas().requestPointerLock?.(); });
+  document.addEventListener('pointerlockchange', () => { isPointerLocked = document.pointerLockElement === canvas(); });
+  document.addEventListener('mousemove', (e) => {
+    if (!isPointerLocked || camMode !== 'fly') return;
+    yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+    pitch = Math.max(-Math.PI/2 + 0.01, Math.min(Math.PI/2 - 0.01, pitch));
+  });
+}
+
+function updateFlyCamera(dt) {
+  if (camMode !== 'fly') return;
+  const dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).negate();
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const speed = (keys['ShiftLeft'] ? 30 : 10) * dt; const move = new THREE.Vector3();
+  if (keys['KeyW']) move.add(dir); if (keys['KeyS']) move.sub(dir);
+  if (keys['KeyA']) move.sub(right); if (keys['KeyD']) move.add(right);
+  if (keys['KeyE'] || keys['Space']) move.y += 1; if (keys['KeyQ'] || keys['ControlLeft']) move.y -= 1;
+  if (move.length() > 0) camera.position.add(move.normalize().multiplyScalar(speed));
+  camera.lookAt(camera.position.clone().add(dir));
+}
+
+function cameraMode(m) {
+  camMode = m;
+  ['btnOrbit','btnSurface','btnSpace','btnFly'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById({ orbit:'btnOrbit', surface:'btnSurface', space:'btnSpace', fly:'btnFly' }[m])?.classList.add('active');
+  if (m === 'fly') showToast("🛸 WASD — движение, Shift — ускорение, мышь — обзор"); else if (isPointerLocked) document.exitPointerLock?.();
+  AudioEngine.click();
+}
+
+// ============================================================
+// 8. СОХРАНЕНИЕ И СТАРТ
+// ============================================================
+const SAVE_KEY = 'god_sim_save_v1';
+function saveGame() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ time: state.time, planet: state.planet, appearance: state.appearance, events: state.events.slice(0, 10) })); showToast("💾 Сохранено"); AudioEngine.click(); }
+  catch(e) { showToast("⚠ Ошибка сохранения"); }
+}
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY); if (!raw) { alert("Нет сохранений."); return; }
+    const data = JSON.parse(raw); Object.assign(state.planet, data.planet); Object.assign(state.appearance, data.appearance || {});
+    state.time = data.time || 0; state.events = data.events || [];
+    startGame(true);
+  } catch(e) { alert("Ошибка загрузки: " + e.message); }
+}
+
+function startGame(isLoad = false) {
+  document.getElementById('menu').style.display = 'none'; document.getElementById('ui').style.display = 'block';
+  document.documentElement.requestFullscreen?.().catch(()=>{});
+  if (!scene) initThree();
+  if (!isLoad) { buildPlanet(); logEvent("🌌 Вселенная создана", "social"); } else { buildPlanet(); updateUI(); renderEventLog(); showToast("💾 Вселенная загружена"); }
+}
+function quickStart() { startGame(); state.planet.life = 20; state.planet.population = 100; AudioEngine.init(); }
+function togglePause() { state.paused = !state.paused; document.getElementById('pauseBtn').textContent = state.paused ? '▶ Продолжить' : '⏸ Пауза'; AudioEngine.click(); }
+
+function applyEdits() {
+  const p = state.planet;
+  p.name = document.getElementById('inName').value || 'Безымянный'; p.type = document.getElementById('inType').value;
+  p.atmosphere = +document.getElementById('inAtm').value; p.size = +document.getElementById('inSize').value;
+  p.fertility = +document.getElementById('inFert').value; p.culture = document.getElementById('inCulture').value;
+  p.tradition = document.getElementById('inTradition').value; buildPlanet(); updateUI(); AudioEngine.click();
+  const cult = cultureAppearance[p.culture];
+  if (cult) {
+    state.appearance.clothColor = '#' + cult.clothColor.toString(16).padStart(6, '0'); state.appearance.build = cult.build;
+    state.appearance.height = cult.height; state.appearance.headShape = cult.headShape;
+    const g = (id) => document.getElementById(id);
+    g('aBuild').value = cult.build; g('vBuild').textContent = cult.build; g('aHead').value = cult.headShape; g('vHead').textContent = cult.headShape;
+    g('aHeight').value = cult.height; g('vHeight').textContent = cult.height; g('aCloth').value = state.appearance.clothColor;
+  }
+  logEvent("⚙ Настройки применены", "social");
+}
+
+['inAtm','inSize','inFert'].forEach(id => { const el = document.getElementById(id); const labelId = { inAtm:'atmVal', inSize:'sizeVal', inFert:'fertVal' }[id]; el.addEventListener('input', () => document.getElementById(labelId).textContent = el.value); });
+
+// Редактор жителей
+let previewScene, previewCamera, previewRenderer, previewCitizen;
+function openCitizenEditor() { document.getElementById('citizenEditor').style.display = 'block'; if (!previewRenderer) initPreview(); AudioEngine.click(); }
+function closeCitizenEditor() { document.getElementById('citizenEditor').style.display = 'none'; AudioEngine.click(); }
+function initPreview() {
+  const canvas = document.getElementById('citizenPreview'); previewScene = new THREE.Scene(); previewScene.background = new THREE.Color(0x0a1525);
+  previewCamera = new THREE.PerspectiveCamera(45, canvas.width/canvas.height, 0.1, 100); previewCamera.position.set(0, 0.9, 1.8); previewCamera.lookAt(0, 0.6, 0);
+  previewRenderer = new THREE.WebGLRenderer({ canvas, antialias: true }); previewRenderer.setSize(canvas.width, canvas.height); previewRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  previewScene.add(new THREE.AmbientLight(0xffffff, 0.7)); const dir = new THREE.DirectionalLight(0xffffff, 1.2); dir.position.set(2, 3, 2); previewScene.add(dir);
+  rebuildPreview(); animatePreview();
+}
+function rebuildPreview() { if (previewCitizen) previewScene.remove(previewCitizen); previewCitizen = createCitizen(state.appearance, 42); previewScene.add(previewCitizen); }
+function animatePreview() {
+  if (!previewRenderer) return; requestAnimationFrame(animatePreview);
+  if (previewCitizen) { previewCitizen.rotation.y += 0.02; const t = performance.now() / 1000, ud = previewCitizen.userData;
+    if (ud.armL) { const s = Math.sin(t * 3) * 0.3; ud.armL.rotation.x = s; ud.armR.rotation.x = -s; } }
+  previewRenderer.render(previewScene, previewCamera);
+}
+['aHeight','aBuild','aHead','aVar'].forEach(id => {
+  const el = document.getElementById(id); const labelId = { aHeight:'vHeight', aBuild:'vBuild', aHead:'vHead', aVar:'vVar' }[id];
+  el.addEventListener('input', () => { document.getElementById(labelId).textContent = el.value;
+    const key = { aHeight:'height', aBuild:'build', aHead:'headShape', aVar:'variation' }[id]; state.appearance[key] = +el.value; rebuildPreview(); });
+});
+['aSkin','aEye','aCloth'].forEach(id => { const el = document.getElementById(id); const key = { aSkin:'skinColor', aEye:'eyeColor', aCloth:'clothColor' }[id]; el.addEventListener('input', () => { state.appearance[key] = el.value; rebuildPreview(); }); });
+function applyAppearance() { logEvent("👽 Внешность обновлена", "social"); if (citizensGroup) respawnCitizens(); showToast("✓ Внешность применена"); AudioEngine.click(); }
+
+function destroyPlanet() {
+  if (state.planet.destroyed || !confirm("💥 Уничтожить планету?")) return;
+  state.planet.destroyed = true; state.planet.population = 0; state.planet.life = 0;
+  const geo = new THREE.BufferGeometry(); const pos = [], vel = []; const r = 2 * state.planet.size;
+  for (let i = 0; i < 1500; i++) {
+    const th = Math.random() * Math.PI * 2, ph = Math.acos(2*Math.random()-1), rr = r * (0.9 + Math.random()*0.2);
+    pos.push(rr*Math.sin(ph)*Math.cos(th), rr*Math.sin(ph)*Math.sin(th), rr*Math.cos(ph));
+    const sp = 3 + Math.random()*6; vel.push(sp*Math.sin(ph)*Math.cos(th), sp*Math.sin(ph)*Math.sin(th), sp*Math.cos(ph));
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  particles = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffaa44, size: 0.15, transparent: true, opacity: 1 })); particles.userData.vel = vel; scene.add(particles);
+  if (planetMesh) planetMesh.visible = false; if (atmosphereMesh) atmosphereMesh.visible = false;
+  logEvent("💥 Планета уничтожена", "disaster"); AudioEngine.boom(2); AudioEngine.destroy();
+  setTimeout(() => { if (confirm("Мир уничтожен. Создать новый?")) location.reload(); }, 2500);
+}
+
+function updateParticles(dt) {
+  if (!particles) return;
+  const pos = particles.geometry.attributes.position.array, vel = particles.userData.vel;
+  for (let i = 0; i < pos.length; i += 3) { pos[i] += vel[i]*dt; pos[i+1] += vel[i+1]*dt; pos[i+2] += vel[i+2]*dt; }
+  particles.geometry.attributes.position.needsUpdate = true; particles.material.opacity -= dt * 0.3;
+  if (particles.material.opacity <= 0) { scene.remove(particles); particles = null; }
+}
+
+// Звук UI
+function toggleSoundPanel() { document.getElementById('soundPanel').classList.toggle('active'); AudioEngine.click(); }
+document.querySelectorAll('#soundPanel .sound-mode button').forEach(btn => {
+  btn.addEventListener('click', () => { document.querySelectorAll('#soundPanel .sound-mode button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); AudioEngine.setMode(btn.dataset.mode); if (btn.dataset.mode !== 'off') AudioEngine.init(); showToast("🔊 Режим: " + btn.textContent); });
+});
+['volAmbient','volEffects','volMaster'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    if (!AudioEngine.started) return; const v = +el.value / 100, now = AudioEngine.ctx.currentTime;
+    if (id === 'volAmbient') AudioEngine.ambientGain.gain.linearRampToValueAtTime(v * 0.4, now + 0.1);
+    if (id === 'volEffects') AudioEngine.effectsGain.gain.linearRampToValueAtTime(v * 0.7, now + 0.1);
+    if (id === 'volMaster')  AudioEngine.master.gain.linearRampToValueAtTime(v, now + 0.1);
+  });
+});
+document.addEventListener('click', () => { if (!AudioEngine.started) { AudioEngine.init(); AudioEngine.setMode('full'); } }, { once: true });
+
+// Главный цикл
+function animate() {
+  requestAnimationFrame(animate); const dt = 1/60;
+  if (!state.paused && !state.planet.destroyed) updateSimulation(dt);
+  if (planetMesh && !state.planet.destroyed) { planetMesh.rotation.y += 0.002; if (atmosphereMesh) atmosphereMesh.rotation.y += 0.0022; }
+  if (saturnRing) saturnRing.rotation.z += 0.0005;
+  animateCitizens(dt); updateFlyCamera(dt);
+  camAngle += 0.001; const p = state.planet;
+  if (camMode === 'orbit' && planetMesh) { const r = 6 * p.size; camera.position.set(Math.cos(camAngle) * r, 1.5 * p.size, Math.sin(camAngle) * r); camera.lookAt(0, 0, 0); }
+  else if (camMode === 'space') { camera.position.set(Math.cos(camAngle * 0.3) * 25, 8, Math.sin(camAngle * 0.3) * 25); camera.lookAt(0, 0, 0); }
+  else if (camMode === 'surface') { const r = 2.05 * p.size; camera.position.set(Math.cos(camAngle*2)*r, 0.3, Math.sin(camAngle*2)*r); camera.lookAt(0, 0, 0); }
+  if (starField) starField.rotation.y += 0.00005;
+  if (particles) updateParticles(dt); updateEffects(dt);
+  renderer.render(scene, camera);
+}
+
+function onResize() { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
+addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.matches('input, select, textarea')) { e.preventDefault(); togglePause(); }
+  if (e.code === 'Digit1') cameraMode('orbit'); if (e.code === 'Digit2') cameraMode('surface');
+  if (e.code === 'Digit3') cameraMode('space'); if (e.code === 'Digit4') cameraMode('fly');
+  if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveGame(); }
+});
+
+preloadTextures();
+</script>
+</body>
+</html>

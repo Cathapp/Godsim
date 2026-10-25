@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>GORODOK</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: #c8d6e5; }
+
+  #startScreen {
+    position: fixed; inset: 0; z-index: 999;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 15px; padding: 25px; text-align: center;
+    background: radial-gradient(circle at center, #1a1a30 0%, #0a0a18 100%);
+  }
+  #startScreen h1 {
+    color: #f0d97a; font-size: 38px; margin: 0;
+    text-shadow: 0 0 30px rgba(240,217,122,0.5);
+  }
+  #startScreen p {
+    color: #8fa8c8; font-size: 14px;
+    font-family: monospace; line-height: 1.8; max-width: 340px;
+  }
+  #startScreen button {
+    margin-top: 20px; padding: 16px 40px;
+    border: none; border-radius: 14px;
+    font-size: 18px; font-weight: bold;
+    background: #4caf50; color: #fff;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 4px 20px rgba(76,175,80,0.5);
+  }
+  #startScreen button:active { transform: scale(0.95); }
+
+  #gameContainer { display: none; position: fixed; inset: 0; background: #87ceeb; overflow: hidden; }
+  #gameContainer.active { display: block; }
+  #gameCanvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; }
+  #hudInfo {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(10,10,24,0.75); padding: 8px 11px; border-radius: 10px;
+    font-family: monospace; font-size: 11px; color: #f0d97a;
+    border: 1px solid rgba(240,217,122,0.3); min-width: 130px;
+  }
+  #hudInfo .row { display: flex; gap: 6px; margin: 2px 0; align-items: center; }
+  #hudInfo .value { color: #fff; font-weight: bold; }
+  #hudTopRight { position: absolute; top: 10px; right: 128px; display: flex; gap: 5px; pointer-events: auto; }
+  .hud-btn {
+    background: rgba(42,42,72,0.9); color: #c8d6e5;
+    border: 1px solid rgba(240,217,122,0.35); padding: 8px 11px;
+    border-radius: 9px; font-size: 14px; cursor: pointer; font-weight: bold;
+  }
+  .hud-btn:active { transform: scale(0.9); }
+  #minimap {
+    position: absolute; top: 10px; right: 10px; width: 110px; height: 110px;
+    border-radius: 9px; border: 1px solid rgba(240,217,122,0.35);
+    background: rgba(10,10,24,0.75);
+  }
+  #joystickZone {
+    position: absolute; bottom: 25px; left: 20px;
+    width: 125px; height: 125px; border-radius: 50%;
+    background: rgba(10,10,24,0.35);
+    border: 2px solid rgba(240,217,122,0.4);
+    touch-action: none; pointer-events: auto;
+  }
+  #joystickKnob {
+    position: absolute; top: 50%; left: 50%;
+    width: 58px; height: 58px; margin: -29px 0 0 -29px;
+    border-radius: 50%; background: #f0d97a; opacity: 0.85;
+  }
+  #joystickZone.active #joystickKnob { opacity: 1; background: #ffe89a; }
+  #actionButtons {
+    position: absolute; bottom: 25px; right: 20px;
+    display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+  }
+  .action-btn {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(42,42,72,0.9); color: #f0d97a;
+    border: 2px solid rgba(240,217,122,0.5);
+    font-size: 22px; font-weight: bold; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+  }
+  .action-btn:active { transform: scale(0.88); background: #f0d97a; color: #0f0f1e; }
+  .action-btn.small { width: 52px; height: 52px; font-size: 17px; }
+  #actionFeed {
+    position: absolute; bottom: 12px; left: 155px;
+    width: calc(100% - 250px); max-width: 400px; pointer-events: none;
+  }
+  #actionFeedList { display: flex; flex-direction: column-reverse; gap: 4px; }
+  .feed-msg {
+    font-family: monospace; font-size: 11px; padding: 5px 10px;
+    background: rgba(10,10,24,0.7); border-left: 3px solid #f0d97a;
+    border-radius: 0 8px 8px 0; color: #c8d6e5;
+    opacity: 0; transform: translateX(-10px); transition: opacity 0.3s, transform 0.3s;
+  }
+  .feed-msg.show { opacity: 1; transform: translateX(0); }
+  .feed-msg.fade { opacity: 0; transition: opacity 0.8s; }
+  .feed-msg.danger { border-left-color: #ff4444; color: #ff8a8a; }
+  .feed-msg.money  { border-left-color: #ffdd44; color: #ffdd44; }
+  .feed-msg.action { border-left-color: #4caf50; color: #a0e0a0; }
+  #toastStack {
+    position: absolute; top: 130px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 6px;
+    pointer-events: none; z-index: 20; align-items: center; width: 90%;
+  }
+  .toast-item {
+    background: rgba(240,217,122,0.95); color: #0f0f1e;
+    padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 12px;
+    opacity: 0; transform: translateY(-10px); transition: opacity 0.3s, transform 0.3s;
+    text-align: center; max-width: 90vw;
+  }
+  .toast-item.show { opacity: 1; transform: translateY(0); }
+  .toast-item.fade { opacity: 0; }
+  #pauseMenu {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(10,10,24,0.95); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px; padding: 20px;
+  }
+  #pauseMenu.hidden { display: none !important; }
+  #pauseMenu h2 { color: #f0d97a; margin-bottom: 16px; font-size: 22px; }
+  #pauseMenu button { max-width: 280px; width: 100%; padding: 12px; border: none;
+    border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer;
+    font-family: inherit; }
+  button.ok { background: #4caf50; color: #fff; }
+  button.ghost { background: rgba(42,42,72,0.9); color: #c8d6e5; }
+  button.danger { background: #8b0000; color: #fff; }
+
+  /* ===== КОНСОЛЬ ===== */
+  #devConsole {
+    position: fixed; left: 50%; bottom: 0; transform: translateX(-50%);
+    width: 95%; max-width: 600px; height: 40vh;
+    background: rgba(0,0,0,0.95); border: 2px solid #f0d97a;
+    border-radius: 12px 12px 0 0; display: flex; flex-direction: column;
+    z-index: 2000; font-family: monospace;
+  }
+  #devConsole.hidden { display: none !important; }
+  #consoleOutput {
+    flex: 1; overflow-y: auto; padding: 10px;
+    color: #0f0; font-size: 12px; background: #000; line-height: 1.5;
+  }
+  #consoleOutput .cmd { color: #f0d97a; font-weight: bold; }
+  #consoleOutput .err { color: #ff4444; }
+  #consoleOutput .info { color: #8fa8c8; }
+  #consoleInputRow {
+    display: flex; padding: 8px; border-top: 1px solid #333;
+    background: #0a0a18; gap: 6px; align-items: center;
+  }
+  #consoleInputRow .prompt { color: #f0d97a; font-weight: bold; font-size: 16px; }
+  #consoleInput {
+    flex: 1; padding: 10px; background: #111; border: 1px solid #333;
+    border-radius: 6px; color: #0f0; font-family: monospace;
+    font-size: 14px; outline: none;
+  }
+  #consoleInput:focus { border-color: #f0d97a; }
+  #consoleSend {
+    padding: 10px 18px; background: #f0d97a; color: #000;
+    border: none; border-radius: 6px; font-weight: bold; font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+  <h1>GORODOK</h1>
+  <p><b>PC:</b> WASD / Shift / Space / F / Q / Tab / Esc</p>
+  <p><b>Mobile:</b> Joystick / Swipe / Buttons</p>
+  <p style="color:#6b7890;font-size:12px;margin-top:8px;">Подойди к двери и нажми F</p>
+  <button id="btnStart">START GAME</button>
+</div>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+  <div id="hud">
+    <div id="hudInfo">
+      <div class="row"><span>$</span><span class="value" id="hudMoney">100</span></div>
+      <div class="row"><span>HP</span><span class="value" id="hudHealth">100</span></div>
+      <div class="row"><span>POS</span><span class="value" id="hudCoords">0, 0</span></div>
+      <div class="row"><span>🚔</span><span class="value" id="hudWanted" style="color:#ff4444;">—</span></div>
+    </div>
+    <div id="hudTopRight">
+      <button class="hud-btn" id="camBtn">CAM</button>
+      <button class="hud-btn" id="ctrlBtn">CTRL</button>
+      <button class="hud-btn" id="followBtn">EYE</button>
+      <button class="hud-btn" id="pauseBtn">||</button>
+      <button class="hud-btn" id="consoleToggle" style="color:#0f0;border-color:#0f0;">&gt;_</button>
+    </div>
+    <canvas id="minimap" width="110" height="110"></canvas>
+    <div id="joystickZone"><div id="joystickKnob"></div></div>
+    <div id="actionButtons">
+      <button class="action-btn small" id="btnJump">^</button>
+      <button class="action-btn" id="btnAction">F</button>
+      <button class="action-btn small" id="btnRun">RUN</button>
+    </div>
+    <div id="actionFeed"><div id="actionFeedList"></div></div>
+    <div id="toastStack"></div>
+  </div>
+  <div id="pauseMenu" class="hidden">
+    <h2>PAUSE</h2>
+    <button class="ok" id="resumeBtn">RESUME</button>
+    <button class="ghost" id="camBtn2">CAMERA</button>
+    <button class="ghost" id="resetBtn">CENTER</button>
+    <button class="danger" id="exitBtn">EXIT</button>
+  </div>
+
+  <div id="devConsole" class="hidden">
+    <div id="consoleOutput"></div>
+    <div id="consoleInputRow">
+      <span class="prompt">&gt;</span>
+      <input type="text" id="consoleInput" placeholder="Команда..." autocomplete="off">
+      <button id="consoleSend">↵</button>
+    </div>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script src="world.js"></script>
+<script src="game.js"></script>
+<script src="console.js"></script>
+</body>
+</html>

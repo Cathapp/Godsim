@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>🔬 Лаборатория Бога</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: #0a0a18; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+  #app { display: flex; width: 100vw; height: 100vh; }
+  #sidebar { width: 280px; background: #12182a; border-right: 1px solid #2a4a7a; display: flex; flex-direction: column; }
+  #logo { padding: 20px; font-size: 20px; font-weight: bold; background: linear-gradient(90deg,#4a9eff,#a06aff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; border-bottom: 1px solid #2a4a7a; }
+  #tabs { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .tab-btn { background: #1a3a6a; color: #fff; border: 1px solid #3a6aaa; padding: 12px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; text-align: left; transition: all 0.15s; }
+  .tab-btn:hover { background: #2a5a9a; }
+  .tab-btn.active { background: #4a9eff; border-color: #4a9eff; }
+  #backBtn { margin: 12px; padding: 10px; border-radius: 8px; background: #444; color: #fff; border: none; cursor: pointer; font-size: 13px; }
+  #backBtn:hover { background: #666; }
+  #main { flex: 1; position: relative; overflow: hidden; background: radial-gradient(ellipse at center, #1a1a30, #000); }
+  #viewCanvas { display: block; width: 100%; height: 100%; }
+  #panel { position: absolute; top: 12px; right: 12px; width: 340px; max-height: calc(100vh - 24px); background: rgba(10,15,30,0.9); border: 1px solid #2a4a7a; border-radius: 10px; padding: 16px; backdrop-filter: blur(10px); overflow-y: auto; }
+  #panel::-webkit-scrollbar { width: 6px; }
+  #panel::-webkit-scrollbar-thumb { background: #2a4a7a; border-radius: 3px; }
+  #panel h3 { color: #7ab8ff; font-size: 14px; margin-bottom: 12px; letter-spacing: 0.5px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: flex; justify-content: space-between; font-size: 11px; color: #9ab; margin-bottom: 3px; }
+  .field label span { color: #fff; font-weight: bold; }
+  input[type=range] { width: 100%; accent-color: #4a9eff; }
+  input[type=text], select { width: 100%; background: #0a1525; color: #eee; border: 1px solid #2a4a7a; border-radius: 5px; padding: 6px; font-size: 12px; }
+  button.action { background: #2a6a2a; color: #fff; border: 1px solid #4aaa4a; padding: 10px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 10px; font-size: 13px; transition: all 0.15s; }
+  button.action:hover { background: #3a8a3a; }
+  button.danger { background: #6a1a1a; border-color: #aa3a3a; }
+  button.danger:hover { background: #9a2a2a; }
+  .species-item { background: rgba(42,90,154,0.2); border: 1px solid #2a4a7a; border-radius: 8px; padding: 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s; }
+  .species-item:hover { background: rgba(74,158,255,0.2); }
+  .species-item.selected { border-color: #4a9eff; background: rgba(74,158,255,0.15); }
+  .species-name { font-weight: bold; color: #7ab8ff; font-size: 13px; }
+  .species-desc { font-size: 10px; color: #668; margin-top: 2px; }
+  .texture-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+  .tex-btn { aspect-ratio: 1; border: 2px solid #2a4a7a; border-radius: 6px; cursor: pointer; overflow: hidden; background: #000; position: relative; transition: all 0.15s; }
+  .tex-btn:hover { border-color: #4a9eff; }
+  .tex-btn.selected { border-color: #4aff4a; box-shadow: 0 0 10px rgba(74,255,74,0.4); }
+  .tex-btn img { width: 100%; height: 100%; object-fit: cover; }
+  .tex-btn .tex-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 9px; text-align: center; padding: 2px; }
+  .parent-select { display: flex; gap: 6px; margin-bottom: 10px; }
+  .parent-select select { flex: 1; }
+  .gene-pill { display: inline-block; background: rgba(74,158,255,0.2); color: #7ab8ff; padding: 2px 8px; border-radius: 10px; font-size: 10px; margin: 2px; }
+  
+  /* Стили для дерева */
+  .tree-node { display: flex; align-items: center; gap: 8px; padding: 6px; border-left: 2px solid #2a4a7a; margin-left: 10px; cursor: pointer; transition: all 0.15s; }
+  .tree-node:hover { background: rgba(74,158,255,0.1); border-left-color: #4a9eff; }
+  .tree-node.root { margin-left: 0; border-left-color: #4a9eff; }
+  .tree-connector { color: #2a4a7a; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="logo">🔬 ЛАБОРАТОРИЯ</div>
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="genetics">🧬 Генетика</button>
+      <button class="tab-btn" data-tab="planet">🪐 Планета</button>
+      <button class="tab-btn" data-tab="tree">🌳 Древо эволюции</button>
+      <button class="tab-btn" data-tab="library">📚 Библиотека</button>
+    </div>
+    <button id="backBtn" onclick="window.location.href='index.html'">← Назад в Симулятор</button>
+  </div>
+  
+  <div id="main">
+    <canvas id="viewCanvas"></canvas>
+    <div id="panel"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+// СОСТОЯНИЕ И ГЕНЕТИКА
+// ============================================================
+const lab = {
+  currentTab: 'genetics', scene: null, camera: null, renderer: null,
+  previewObject: null, selectedParentA: null, selectedParentB: null, hybridGenome: null,
+  currentPlanetConfig: { textureUrl: '', baseColor: '#4488ff', size: 1.0, gravity: 1.0, atmosphere: 1.0, temperature: 0.5, rotationSpeed: 0.002 },
+  savedSpecies: [], savedPlanets: []
+};
+
+const GENES = {
+  skinTone: ['#e8c098', '#c89878', '#a86848', '#f0d0a8', '#8a5840'],
+  eyeShape: ['round', 'narrow', 'wide', 'almond'],
+  height: [0.7, 0.9, 1.0, 1.2, 1.4],
+  build: [0.75, 0.9, 1.0, 1.15, 1.3],
+  headShape: [0.9, 1.0, 1.1, 1.2],
+  intelligence: [0.3, 0.5, 0.7, 0.9, 1.0],
+  temperament: ['aggressive', 'peaceful', 'curious', 'cautious', 'mystical'],
+  eyeColor: ['#2244aa', '#33aa44', '#aa5533', '#8866aa', '#333333']
+};
+
+function randomGenome() {
+  return {
+    id: 'sp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name: 'Особь ' + Math.floor(Math.random() * 999),
+    skinTone: GENES.skinTone[Math.floor(Math.random() * GENES.skinTone.length)],
+    eyeShape: GENES.eyeShape[Math.floor(Math.random() * GENES.eyeShape.length)],
+    height: GENES.height[Math.floor(Math.random() * GENES.height.length)],
+    build: GENES.build[Math.floor(Math.random() * GENES.build.length)],
+    headShape: GENES.headShape[Math.floor(Math.random() * GENES.headShape.length)],
+    intelligence: GENES.intelligence[Math.floor(Math.random() * GENES.intelligence.length)],
+    temperament: GENES.temperament[Math.floor(Math.random() * GENES.temperament.length)],
+    eyeColor: GENES.eyeColor[Math.floor(Math.random() * GENES.eyeColor.length)],
+    generation: 1, parentA: null, parentB: null
+  };
+}
+
+function breed(parentA, parentB) {
+  if (!parentA || !parentB) return null;
+  const mutationRate = 0.15;
+  const choose = (a, b) => Math.random() < 0.5 ? a : b;
+  const mutate = (value, geneKey) => {
+    if (Math.random() > mutationRate) return value;
+    return GENES[geneKey][Math.floor(Math.random() * GENES[geneKey].length)];
+  };
+  
+  return {
+    id: 'hyb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name: `Гибрид ${parentA.name.split(' ').pop()}×${parentB.name.split(' ').pop()}`,
+    skinTone: mutate(choose(parentA.skinTone, parentB.skinTone), 'skinTone'),
+    eyeShape: mutate(choose(parentA.eyeShape, parentB.eyeShape), 'eyeShape'),
+    height: mutate(choose(parentA.height, parentB.height), 'height'),
+    build: mutate(choose(parentA.build, parentB.build), 'build'),
+    headShape: mutate(choose(parentA.headShape, parentB.headShape), 'headShape'),
+    intelligence: mutate(choose(parentA.intelligence, parentB.intelligence), 'intelligence'),
+    temperament: mutate(choose(parentA.temperament, parentB.temperament), 'temperament'),
+    eyeColor: mutate(choose(parentA.eyeColor, parentB.eyeColor), 'eyeColor'),
+    generation: Math.max(parentA.generation || 1, parentB.generation || 1) + 1,
+    parentA: parentA.id, parentB: parentB.id
+  };
+}
+
+// ============================================================
+// 3D ПРЕВЬЮ
+// ============================================================
+function initThree() {
+  const canvas = document.getElementById('viewCanvas');
+  lab.scene = new THREE.Scene();
+  lab.scene.background = new THREE.Color(0x0a0a18);
+  lab.camera = new THREE.PerspectiveCamera(45, canvas.width / canvas.height, 0.1, 100);
+  lab.camera.position.set(0, 1.5, 4);
+  lab.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  lab.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  lab.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  
+  lab.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(3, 5, 3); lab.scene.add(sun);
+  const rim = new THREE.DirectionalLight(0x4a9eff, 0.5); rim.position.set(-3, 2, -3); lab.scene.add(rim);
+  
+  window.addEventListener('resize', onResize);
+  onResize();
+  animate();
+}
+
+function onResize() {
+  const canvas = document.getElementById('viewCanvas');
+  lab.camera.aspect = canvas.clientWidth / canvas.clientHeight;
+  lab.camera.updateProjectionMatrix();
+  lab.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (lab.previewObject) lab.previewObject.rotation.y += 0.008;
+  lab.renderer.render(lab.scene, lab.camera);
+}
+
+function createCreatureModel(genome) {
+  const group = new THREE.Group();
+  const skinColor = new THREE.Color(genome.skinTone);
+  const eyeColor = new THREE.Color(genome.eyeColor);
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.8 });
+  const clothMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(temperamentColor(genome.temperament)), roughness: 0.9 });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
+  
+  const torsoW = 0.35 * genome.build, torsoH = 0.5 * genome.height, torsoD = 0.22 * genome.build;
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(torsoW, torsoH, torsoD), clothMat);
+  torso.position.y = torsoH / 2 + 0.15; group.add(torso);
+  
+  const headR = 0.14 * genome.height;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(headR, 24, 24), skinMat);
+  head.position.y = torsoH + 0.15 + headR * 0.8;
+  head.scale.set(genome.headShape, genome.headShape * 1.1, genome.headShape);
+  group.add(head);
+  
+  const eyeShapeScale = { round:{x:1,y:1}, narrow:{x:1.4,y:0.5}, wide:{x:1.2,y:1.2}, almond:{x:1.3,y:0.75} }[genome.eyeShape] || { x: 1, y: 1 };
+  const eyeGeo = new THREE.SphereGeometry(headR * 0.15, 12, 12);
+  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+  eyeL.position.set(-headR * 0.4, head.position.y + headR * 0.15, headR * 0.85);
+  eyeL.scale.set(eyeShapeScale.x, eyeShapeScale.y, 1); group.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.x = headR * 0.4; group.add(eyeR);
+  
+  const pupilGeo = new THREE.SphereGeometry(headR * 0.07, 8, 8);
+  const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const pupilL = new THREE.Mesh(pupilGeo, pupilMat);
+  pupilL.position.set(eyeL.position.x, eyeL.position.y, eyeL.position.z + headR * 0.1); group.add(pupilL);
+  const pupilR = pupilL.clone(); pupilR.position.x = eyeR.position.x; group.add(pupilR);
+  
+  const armGeo = new THREE.BoxGeometry(0.08 * genome.build, 0.4 * genome.height, 0.08 * genome.build);
+  const armL = new THREE.Mesh(armGeo, skinMat);
+  armL.position.set(-(torsoW / 2 + 0.04), torsoH / 2 + 0.15 + 0.1, 0); group.add(armL);
+  const armR = armL.clone(); armR.position.x = torsoW / 2 + 0.04; group.add(armR);
+  
+  const legGeo = new THREE.BoxGeometry(0.1 * genome.build, 0.4 * genome.height, 0.1 * genome.build);
+  const legL = new THREE.Mesh(legGeo, clothMat);
+  legL.position.set(-0.09 * genome.build, 0.2 * genome.height, 0); group.add(legL);
+  const legR = legL.clone(); legR.position.x = 0.09 * genome.build; group.add(legR);
+  
+  const auraColors = { aggressive: 0xff4444, peaceful: 0x44ff88, curious: 0xffdd44, cautious: 0x8888ff, mystical: 0xaa44ff };
+  const auraGeo = new THREE.SphereGeometry(1.0, 16, 16);
+  const auraMat = new THREE.MeshBasicMaterial({ color: auraColors[genome.temperament] || 0xffffff, transparent: true, opacity: 0.06, side: THREE.BackSide });
+  const aura = new THREE.Mesh(auraGeo, auraMat); aura.position.y = 0.8; group.add(aura);
+  
+  return group;
+}
+
+function temperamentColor(temp) {
+  return { aggressive: 0x8a1a1a, peaceful: 0x1a6a3a, curious: 0x8a6a1a, cautious: 0x1a3a8a, mystical: 0x6a1a8a }[temp] || 0x555555;
+}
+
+function createPlanetModel(config) {
+  if (lab.previewObject) lab.scene.remove(lab.previewObject);
+  const group = new THREE.Group();
+  const r = 1.5 * config.size;
+  
+  let material;
+  if (config.textureUrl) {
+    const loader = new THREE.TextureLoader();
+    material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+    loader.load(config.textureUrl, (tex) => { tex.colorSpace = THREE.SRGBColorSpace; material.map = tex; material.needsUpdate = true; }, undefined, () => { material.color = new THREE.Color(config.baseColor); });
+  } else {
+    material = new THREE.MeshStandardMaterial({ color: new THREE.Color(config.baseColor), roughness: 0.85 });
+  }
+  
+  const planet = new THREE.Mesh(new THREE.SphereGeometry(r, 64, 64), material);
+  group.add(planet);
+  
+  if (config.atmosphere > 0.1) {
+    const atmo = new THREE.Mesh(new THREE.SphereGeometry(r * 1.08, 32, 32), new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.15 * config.atmosphere, side: THREE.BackSide }));
+    group.add(atmo);
+  }
+  if (config.temperature > 0.7) {
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(r * 1.15, 32, 32), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: (config.temperature - 0.7) * 0.4, side: THREE.BackSide }));
+    group.add(glow);
+  }
+  
+  lab.previewObject = group; lab.scene.add(group);
+  lab.camera.position.set(0, 0, r * 3.5); lab.camera.lookAt(0, 0, 0);
+}
+
+// ============================================================
+// ИНТЕРФЕЙС: ВКЛАДКИ
+// ============================================================
+function renderGeneticsPanel() {
+  const species = lab.savedSpecies;
+  if (species.length < 2) {
+    for (let i = 0; i < 3; i++) lab.savedSpecies.push(randomGenome());
+    saveSpecies(); return renderGeneticsPanel();
+  }
+  
+  const html = `
+    <h3>🧬 ГЕНЕТИЧЕСКАЯ ЛАБОРАТОРИЯ</h3>
+    <div class="parent-select">
+      <select id="parentA"><option value="">— Родитель A —</option>${species.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
+      <select id="parentB"><option value="">— Родитель B —</option>${species.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}</select>
+    </div>
+    <button class="action" onclick="doBreed()">🧬 Скрестить</button>
+    
+    ${lab.hybridGenome ? `
+      <hr style="border-color:#2a4a7a; margin:16px 0;">
+      <h3>✨ НОВЫЙ ГИБРИД</h3>
+      <div style="margin-bottom:10px;"><input type="text" id="hybridName" value="${lab.hybridGenome.name}"></div>
+      <div>${renderGenePills(lab.hybridGenome)}</div>
+      <button class="action" onclick="saveHybrid()">💾 Сохранить в Библиотеку</button>
+    ` : ''}
+    
+    <hr style="border-color:#2a4a7a; margin:16px 0;">
+    <h3>👥 ВСЕ ОСОБИ (${species.length})</h3>
+    ${species.map(s => `
+      <div class="species-item" onclick="previewGenome(getSpecies('${s.id}')); setDominant('${s.id}')">
+        <div class="species-name">${s.name}</div>
+        <div class="species-desc">Поколение ${s.generation} ${localStorage.getItem('god_dominant_species') === s.id ? '· 👑 ДОМИНИРУЮЩИЙ' : ''}</div>
+      </div>
+    `).join('')}
+    <button class="action danger" onclick="if(confirm('Создать случайную особь?')) { lab.savedSpecies.push(randomGenome()); saveSpecies(); renderPanel(); }">➕ Случайная особь</button>
+  `;
+  
+  document.getElementById('panel').innerHTML = html;
+  
+  document.getElementById('parentA')?.addEventListener('change', (e) => { lab.selectedParentA = lab.savedSpecies.find(s => s.id === e.target.value) || null; updatePreviewFromParents(); });
+  document.getElementById('parentB')?.addEventListener('change', (e) => { lab.selectedParentB = lab.savedSpecies.find(s => s.id === e.target.value) || null; updatePreviewFromParents(); });
+  
+  if (lab.hybridGenome) previewGenome(lab.hybridGenome);
+  else if (species[0]) previewGenome(species[0]);
+}
+
+function renderTreePanel() {
+  const species = lab.savedSpecies;
+  // Находим всех, у кого нет родителей в списке (корни)
+  const roots = species.filter(s => !s.parentA && !s.parentB);
+  const rendered = new Set();
+  
+  function renderBranch(node, depth = 0) {
+    if (rendered.has(node.id) || depth > 10) return '';
+    rendered.add(node.id);
+    const indent = '    '.repeat(depth);
+    const isDominant = localStorage.getItem('god_dominant_species') === node.id;
+    let html = `<div class="tree-node ${depth === 0 ? 'root' : ''}" onclick="previewGenome(getSpecies('${node.id}'))">
+      <span class="tree-connector">${depth > 0 ? '└─' : ''}</span>
+      <div><div class="species-name">${node.name} ${isDominant ? '👑' : ''}</div><div class="species-desc">Пок. ${node.generation}</div></div>
+    </div>`;
+    
+    const children = species.filter(s => s.parentA === node.id || s.parentB === node.id);
+    children.forEach(c => { html += renderBranch(c, depth + 1); });
+    return html;
+  }
+  
+  let treeHtml = '';
+  if (roots.length === 0) treeHtml = '<div class="species-desc">Создайте гибридов, чтобы увидеть древо</div>';
+  else roots.forEach(r => { treeHtml += renderBranch(r); });
+  
+  const html = `
+    <h3>🌳 ДРЕВО ЭВОЛЮЦИИ</h3>
+    <div style="margin-bottom:16px;">${treeHtml}</div>
+    <button class="action danger" onclick="if(confirm('Очистить ВСЕХ существ?')) { lab.savedSpecies = []; saveSpecies(); renderPanel(); }">🗑 Удалить всех</button>
+  `;
+  document.getElementById('panel').innerHTML = html;
+  previewGenome(species[0]);
+}
+
+function renderPlanetPanel() {
+  const nasaTextures = [
+    { name: 'Земля', url: 'https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg', color: '#4488ff' },
+    { name: 'Марс', url: 'https://www.solarsystemscope.com/textures/download/2k_mars.jpg', color: '#c06030' },
+    { name: 'Венера', url: 'https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg', color: '#ddcc88' },
+    { name: 'Сатурн', url: 'https://www.solarsystemscope.com/textures/download/2k_saturn.jpg', color: '#d0b880' },
+    { name: 'Юпитер', url: 'https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg', color: '#d0a070' },
+    { name: 'Нептун', url: 'https://www.solarsystemscope.com/textures/download/2k_neptune.jpg', color: '#4466dd' },
+    { name: 'Уран', url: 'https://www.solarsystemscope.com/textures/download/2k_uranus.jpg', color: '#88ccdd' },
+    { name: 'Луна', url: 'https://www.solarsystemscope.com/textures/download/2k_moon.jpg', color: '#888888' },
+    { name: 'Меркурий', url: 'https://www.solarsystemscope.com/textures/download/2k_mercury.jpg', color: '#999999' }
+  ];
+  
+  const html = `
+    <h3>🪐 РЕДАКТОР ПЛАНЕТ</h3>
+    <label style="font-size:11px;color:#9ab;margin-bottom:6px;display:block;">Текстура NASA:</label>
+    <div class="texture-grid">
+      <div class="tex-btn ${!lab.currentPlanetConfig.textureUrl ? 'selected' : ''}" onclick="selectTexture('', '#4488ff')" style="background:#4488ff; display:flex; align-items:center; justify-content:center;"><span style="font-size:10px;">Цвет</span></div>
+      ${nasaTextures.map(t => `<div class="tex-btn ${lab.currentPlanetConfig.textureUrl === t.url ? 'selected' : ''}" onclick="selectTexture('${t.url}', '${t.color}')"><img src="${t.url}" onerror="this.style.display='none'"><div class="tex-label">${t.name}</div></div>`).join('')}
+    </div>
+    <div class="field"><label>Размер <span>${lab.currentPlanetConfig.size.toFixed(1)}×</span></label><input type="range" min="0.5" max="2" step="0.1" value="${lab.currentPlanetConfig.size}" oninput="updatePlanetConfig('size', +this.value); this.previousElementSibling.querySelector('span').textContent = this.value + '×'"></div>
+    <div class="field"><label>Гравитация <span>${lab.currentPlanetConfig.gravity.toFixed(1)}g</span></label><input type="range" min="0.1" max="3" step="0.1" value="${lab.currentPlanetConfig.gravity}" oninput="updatePlanetConfig('gravity', +this.value); this.previousElementSibling.querySelector('span').textContent = this.value + 'g'"></div>
+    <div class="field"><label>Атмосфера <span>${(lab.currentPlanetConfig.atmosphere * 100).toFixed(0)}%</span></label><input type="range" min="0" max="2" step="0.1" value="${lab.currentPlanetConfig.atmosphere}" oninput="updatePlanetConfig('atmosphere', +this.value); this.previousElementSibling.querySelector('span').textContent = (this.value * 100).toFixed(0) + '%'"></div>
+    <div class="field"><label>Температура <span>${(lab.currentPlanetConfig.temperature * 100).toFixed(0)}%</span></label><input type="range" min="0" max="1" step="0.05" value="${lab.currentPlanetConfig.temperature}" oninput="updatePlanetConfig('temperature', +this.value); this.previousElementSibling.querySelector('span').textContent = (this.value * 100).toFixed(0) + '%'"></div>
+    <button class="action" onclick="savePlanet()">💾 Сохранить планету</button>
+    <hr style="border-color:#2a4a7a; margin:16px 0;">
+    <h3>📚 СОХРАНЁННЫЕ (${lab.savedPlanets.length})</h3>
+    ${lab.savedPlanets.map((p, i) => `<div class="species-item" onclick="loadPlanet(${i})"><div class="species-name">${p.name}</div><div class="species-desc">${p.textureUrl ? 'NASA текстура' : 'Цветная'}</div></div>`).join('') || '<div class="species-desc">Пусто</div>'}
+  `;
+  document.getElementById('panel').innerHTML = html;
+  createPlanetModel(lab.currentPlanetConfig);
+}
+
+function renderLibraryPanel() {
+  const html = `
+    <h3>📚 БИБЛИОТЕКА ТВОРЕНИЙ</h3>
+    <div style="margin-bottom:16px;">
+      <div style="color:#7ab8ff;font-size:12px;margin-bottom:8px;">🧬 СУЩЕСТВА (${lab.savedSpecies.length})</div>
+      ${lab.savedSpecies.map(s => `<div class="species-item" onclick="previewGenome(getSpecies('${s.id}'))"><div class="species-name">${s.name}</div><div class="species-desc">${s.temperament} · Пок. ${s.generation}</div></div>`).join('') || '<div class="species-desc">Пусто</div>'}
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="color:#7ab8ff;font-size:12px;margin-bottom:8px;">🪐 ПЛАНЕТЫ (${lab.savedPlanets.length})</div>
+      ${lab.savedPlanets.map((p, i) => `<div class="species-item" onclick="loadPlanet(${i})"><div class="species-name">${p.name}</div><div class="species-desc">${p.textureUrl ? 'NASA' : 'Цветная'}</div></div>`).join('') || '<div class="species-desc">Пусто</div>'}
+    </div>
+    <button class="action danger" onclick="if(confirm('Очистить ВСЁ?')) { lab.savedSpecies = []; lab.savedPlanets = []; saveAll(); renderPanel(); }">🗑 Очистить всё</button>
+  `;
+  document.getElementById('panel').innerHTML = html;
+}
+
+function renderPanel() {
+  if (lab.currentTab === 'genetics') renderGeneticsPanel();
+  else if (lab.currentTab === 'planet') renderPlanetPanel();
+  else if (lab.currentTab === 'tree') renderTreePanel();
+  else if (lab.currentTab === 'library') renderLibraryPanel();
+}
+
+// ============================================================
+// ДЕЙСТВИЯ
+// ============================================================
+function doBreed() {
+  if (!lab.selectedParentA || !lab.selectedParentB) return alert('Выбери двух родителей!');
+  if (lab.selectedParentA.id === lab.selectedParentB.id) return alert('Нужны РАЗНЫЕ родители!');
+  lab.hybridGenome = breed(lab.selectedParentA, lab.selectedParentB);
+  renderGeneticsPanel();
+}
+
+function saveHybrid() {
+  if (!lab.hybridGenome) return;
+  const nameInput = document.getElementById('hybridName');
+  if (nameInput) lab.hybridGenome.name = nameInput.value || 'Гибрид';
+  lab.savedSpecies.push(lab.hybridGenome);
+  saveSpecies();
+  lab.hybridGenome = null;
+  renderGeneticsPanel();
+  showToast('✓ Гибрид сохранён');
+}
+
+function previewGenome(genome) {
+  if (!genome) return;
+  if (lab.previewObject) lab.scene.remove(lab.previewObject);
+  lab.previewObject = createCreatureModel(genome);
+  lab.scene.add(lab.previewObject);
+  lab.camera.position.set(0, 0.8, 2.5);
+  lab.camera.lookAt(0, 0.6, 0);
+}
+
+function updatePreviewFromParents() {
+  if (lab.selectedParentA && lab.selectedParentB) previewGenome(breed(lab.selectedParentA, lab.selectedParentB));
+}
+
+function selectTexture(url, color) { lab.currentPlanetConfig.textureUrl = url; lab.currentPlanetConfig.baseColor = color; renderPlanetPanel(); }
+function updatePlanetConfig(key, value) { lab.currentPlanetConfig[key] = value; createPlanetModel(lab.currentPlanetConfig); }
+function savePlanet() {
+  const name = prompt('Имя планеты:', 'Планета ' + (lab.savedPlanets.length + 1));
+  if (!name) return;
+  lab.savedPlanets.push({ ...lab.currentPlanetConfig, name });
+  savePlanets(); renderPlanetPanel(); showToast('✓ Планета сохранена');
+}
+function loadPlanet(index) { lab.currentPlanetConfig = { ...lab.savedPlanets[index] }; renderPlanetPanel(); showToast('✓ Загружено'); }
+
+// ============================================================
+// ИНТЕГРАЦИЯ С СИМУЛЯТОРОМ (ВЫБОР ДОМИНИРУЮЩЕГО ВИДА)
+// ============================================================
+function setDominant(id) {
+  if (confirm('Сделать этот вид доминирующим на планете в Симуляторе Бога?')) {
+    localStorage.setItem('god_dominant_species', id);
+    showToast('👑 Вид стал доминирующим!');
+    renderPanel(); // Перерисовать, чтобы появилась корона
+  }
+}
+
+// ============================================================
+// ХРАНИЛИЩЕ
+// ============================================================
+function getSpecies(id) { return lab.savedSpecies.find(s => s.id === id); }
+function saveSpecies() { localStorage.setItem('god_lab_species', JSON.stringify(lab.savedSpecies)); }
+function savePlanets() { localStorage.setItem('god_lab_planets', JSON.stringify(lab.savedPlanets)); }
+function saveAll() { saveSpecies(); savePlanets(); }
+function loadAll() {
+  try {
+    lab.savedSpecies = JSON.parse(localStorage.getItem('god_lab_species') || '[]');
+    lab.savedPlanets = JSON.parse(localStorage.getItem('god_lab_planets') || '[]');
+  } catch (e) { lab.savedSpecies = []; lab.savedPlanets = []; }
+}
+
+function showToast(text) {
+  const t = document.createElement('div');
+  t.textContent = text;
+  t.style.cssText = `position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(74,158,255,0.95);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:9999;`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    lab.currentTab = btn.dataset.tab;
+    renderPanel();
+  });
+});
+
+// СТАРТ
+initThree();
+loadAll();
+renderPanel();
+</script>
+</body>
+</html>
